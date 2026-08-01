@@ -72,6 +72,7 @@ export default function DashboardPage() {
   const [deleteDialog, setDeleteDialog] = useState<{ show: boolean; story: Story | null }>({ show: false, story: null })
   const [leaveDialog, setLeaveDialog] = useState<{ show: boolean; story: Story | null }>({ show: false, story: null })
   const [isLeaving, setIsLeaving] = useState(false)
+  const [leaveError, setLeaveError] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
 
   // Handle authentication
@@ -288,6 +289,7 @@ export default function DashboardPage() {
     if (!leaveDialog.story) return
 
     setIsLeaving(true)
+    setLeaveError(null)
 
     leaveCollaborationMutation.mutate(
       { storyId: leaveDialog.story.id },
@@ -298,6 +300,8 @@ export default function DashboardPage() {
         },
         onError: (error) => {
           console.error('Error leaving project:', error)
+          // Say so instead of closing the dialog as though it worked.
+          setLeaveError(error instanceof Error ? error.message : 'Could not leave this project.')
           setIsLeaving(false)
         }
       }
@@ -603,7 +607,13 @@ export default function DashboardPage() {
       </Dialog>
 
       {/* Leave Project Dialog - shown instead of Delete for projects you don't own */}
-      <Dialog open={leaveDialog.show} onOpenChange={(open) => setLeaveDialog({ show: open, story: null })}>
+      <Dialog
+        open={leaveDialog.show}
+        onOpenChange={(open) => {
+          setLeaveDialog({ show: open, story: null })
+          if (!open) setLeaveError(null)
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Leave Project?</DialogTitle>
@@ -626,10 +636,19 @@ export default function DashboardPage() {
             </div>
           </div>
 
+          {leaveError && (
+            <div className="p-3 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 rounded-md">
+              {leaveError}
+            </div>
+          )}
+
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => setLeaveDialog({ show: false, story: null })}
+              onClick={() => {
+                setLeaveDialog({ show: false, story: null })
+                setLeaveError(null)
+              }}
               disabled={isLeaving}
             >
               Cancel

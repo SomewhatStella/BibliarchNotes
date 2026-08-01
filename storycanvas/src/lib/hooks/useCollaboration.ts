@@ -275,13 +275,25 @@ export function useLeaveCollaboration() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('Not authenticated')
 
-      const { error } = await supabase
+      // .select() so we can tell "removed" from "silently blocked". Row-level
+      // security returns success with zero rows when it refuses a delete, so
+      // without this the app reports a successful leave that never happened.
+      const { data, error } = await supabase
         .from('story_collaborators')
         .delete()
         .eq('story_id', storyId)
         .eq('user_id', user.id)
+        .select()
 
       if (error) throw error
+
+      if (!data || data.length === 0) {
+        throw new Error(
+          "Couldn't leave this project - the database refused the request. " +
+          'The "Users can leave collaborations they are part of" policy is probably missing ' +
+          '(see fix-leave-project-policy.sql).'
+        )
+      }
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: collabQueryKeys.collaborators(variables.storyId) })
