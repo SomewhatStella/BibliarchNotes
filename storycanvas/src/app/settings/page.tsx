@@ -117,7 +117,8 @@ export default function SettingsPage() {
       })
 
       if (updateError) {
-        setError(updateError.message)
+        const { authErrorMessage } = await import('@/lib/auth/errors')
+        setError(authErrorMessage(updateError))
       } else {
         setSuccess(true)
         // Clear form

@@ -47,7 +47,8 @@ export default function ResetPasswordPage() {
       })
 
       if (error) {
-        setError(error.message)
+        const { authErrorMessage } = await import('@/lib/auth/errors')
+        setError(authErrorMessage(error))
       } else {
         setSuccess(true)
         // Redirect to login after 2 seconds

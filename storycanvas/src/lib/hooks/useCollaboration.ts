@@ -3,6 +3,10 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { RealtimeChannel } from '@supabase/supabase-js'
 
+// Supabase Realtime caps a broadcast message at roughly 256KB. Warn a little
+// under that so we hear about it before messages start disappearing.
+const REALTIME_PAYLOAD_WARN_BYTES = 200 * 1024
+
 // Types
 export interface Collaborator {
   id: string
@@ -758,16 +762,35 @@ export function useRealtimeCanvas(
     if (channelRef.current) {
       console.log('📡 Broadcasting:', nodes.length, 'nodes to canvas:', canvasTypeRef.current)
       try {
+        const payload = {
+          nodes,
+          connections,
+          userId: userIdRef.current
+        }
+
+        // Realtime silently drops messages past its size cap. That failure used
+        // to be invisible: the sender saw their change, the receiver never got
+        // it, and the receiver's next edit (built on a stale copy) overwrote the
+        // sender. Anything approaching the limit is worth shouting about.
+        const payloadBytes = JSON.stringify(payload).length
+        if (payloadBytes > REALTIME_PAYLOAD_WARN_BYTES) {
+          console.error(
+            `📡 Canvas broadcast is ${Math.round(payloadBytes / 1024)}KB, which is at or over the Realtime message limit. ` +
+            `Collaborators will not receive this change. Usually means a node is carrying inline image data instead of a storage path.`
+          )
+        }
+
         const result = await channelRef.current.send({
           type: 'broadcast',
           event: 'canvas-update',
-          payload: {
-            nodes,
-            connections,
-            userId: userIdRef.current
-          }
+          payload
         })
-        console.log('📡 Broadcast result:', result)
+
+        if (result !== 'ok') {
+          console.error('📡 Broadcast did NOT reach collaborators, result:', result, `(${Math.round(payloadBytes / 1024)}KB)`)
+        } else {
+          console.log('📡 Broadcast result:', result)
+        }
       } catch (err) {
         console.error('📡 Broadcast error:', err)
       }

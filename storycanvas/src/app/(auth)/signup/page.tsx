@@ -5,7 +5,6 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { signUp } from '@/lib/auth/actions'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -17,29 +16,30 @@ import FeedbackButton from '@/components/feedback/FeedbackButton'
 export default function SignupPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [showConfirmation, setShowConfirmation] = useState(false)
-  const [signupEmail, setSignupEmail] = useState('')
-  const router = useRouter()
 
-  // Handle form submission with beautiful loading state
+  // Handle form submission with beautiful loading state.
+  // There is no email confirmation step - a successful signUp signs you in and
+  // redirects to the dashboard.
   async function handleSubmit(formData: FormData) {
     setIsLoading(true)
     setError(null)
 
-    const email = formData.get('email') as string
-    setSignupEmail(email)
+    try {
+      const result = await signUp(formData)
 
-    const result = await signUp(formData)
-
-    if (result?.error) {
-      setError(result.error)
-      setIsLoading(false)
-    } else if (result?.needsConfirmation) {
-      // Show confirmation message instead of redirecting
-      setShowConfirmation(true)
+      if (result?.error) {
+        setError(result.error)
+        setIsLoading(false)
+      }
+      // On success signUp redirects, so this component unmounts.
+    } catch (err) {
+      // A successful signUp redirects, which Next signals by throwing. Let it through.
+      if ((err as { digest?: string })?.digest?.startsWith('NEXT_REDIRECT')) throw err
+      // Anything else means we never reached Supabase (network, timeout).
+      console.error('Signup failed:', err)
+      setError("We couldn't reach the server. Check your connection and try again in a minute.")
       setIsLoading(false)
     }
-    // If successful and no confirmation needed, signUp will redirect automatically
   }
 
   return (
@@ -160,58 +160,6 @@ export default function SignupPage() {
           </div>
         </CardContent>
       </Card>
-
-      {/* Email Confirmation Message */}
-      {showConfirmation && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 animate-fade-in">
-          <Card className="w-full max-w-md animate-slide-up">
-            <CardHeader>
-              <div className="flex items-center justify-center mb-2">
-                <Sparkles className="w-12 h-12 text-sky-500 dark:text-blue-400 animate-pulse" />
-              </div>
-              <CardTitle className="text-center">Check Your Email!</CardTitle>
-              <CardDescription className="text-center">
-                We've sent a confirmation link to verify your account
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="p-4 text-sm bg-sky-50 dark:bg-blue-900/20 rounded-md">
-                <p className="mb-2">
-                  We sent a confirmation email to:
-                </p>
-                <p className="font-medium text-sky-700 dark:text-blue-300">
-                  {signupEmail}
-                </p>
-              </div>
-
-              <div className="text-sm text-muted-foreground space-y-2">
-                <p>• Click the link in the email to confirm your account</p>
-                <p>• Check your spam folder if you don't see it</p>
-                <p>• The link expires in 24 hours</p>
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <Button
-                  onClick={() => router.push('/login')}
-                  className="w-full bg-gradient-to-r from-sky-500 to-blue-600 dark:from-blue-500 dark:to-blue-700"
-                >
-                  Go to Login
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setShowConfirmation(false)
-                    setSignupEmail('')
-                  }}
-                  className="w-full"
-                >
-                  Sign Up Again
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
     </div>
   )
 }

@@ -1,55 +1,53 @@
 // Authentication actions for Bibliarch
-// Professional auth with email confirmations and password reset
+//
+// There is deliberately NO email step here. Signing up creates the account and
+// signs you straight in. This requires "Confirm email" to be OFF in the Supabase
+// dashboard (Authentication -> Providers -> Email). If it ever gets switched
+// back on, signUp below detects the missing session and says something true
+// instead of promising a confirmation email we never send.
 
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { authErrorMessage } from '@/lib/auth/errors'
 import { redirect } from 'next/navigation'
 
 export async function signUp(formData: FormData) {
   const supabase = await createClient()
-  
+
   // Extract form data
   const email = formData.get('email') as string
   const password = formData.get('password') as string
   const username = formData.get('username') as string
 
-  // First try to sign in (in case user exists)
-  const { error: signInError } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  })
-
-  if (!signInError) {
-    // User exists and password is correct
-    redirect('/dashboard')
-    return
-  }
-
-  // Sign up the user - Supabase will auto-confirm if settings are correct
+  // Create the account. Supabase returns a session immediately because email
+  // confirmation is off.
+  //
+  // Note: we deliberately do NOT try signInWithPassword first. That doubled our
+  // requests against the endpoint that rate-limits, and a 429 there is what
+  // produced the "{}" error users were reporting.
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
-      data: {
-        username,
-      },
-      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/dashboard`
-    }
+      data: { username },
+    },
   })
 
   if (error) {
-    // If email exists but password is wrong, try to be helpful
-    // Check both error message and code for robustness
-    const isAlreadyRegistered =
-      error.message?.toLowerCase().includes('already registered') ||
-      error.message?.toLowerCase().includes('user already registered') ||
-      (error as any).code === 'user_already_exists' ||
-      (error as any).status === 422
-    if (isAlreadyRegistered) {
-      return { error: 'Email already exists. Try signing in instead.' }
+    return { error: authErrorMessage(error) }
+  }
+
+  if (!data.session) {
+    // Only reachable if email confirmation got turned back on in Supabase.
+    // Don't send the user hunting for an email that isn't coming.
+    console.error(
+      'signUp returned no session - "Confirm email" is enabled in Supabase but we send no confirmation mail'
+    )
+    return {
+      error:
+        "Your account was created but couldn't be activated automatically. Send us feedback and we'll sort it out.",
     }
-    return { error: error.message }
   }
 
   // Create or update the profile with username
@@ -57,25 +55,15 @@ export async function signUp(formData: FormData) {
     const { error: profileError } = await supabase.from('profiles').upsert({
       id: data.user.id,
       username,
-      email: email
+      email,
     })
 
     if (profileError) {
+      // Not fatal - the account exists and the user can sign in.
       console.error('Error creating profile:', profileError)
-    }
-
-    // Check if email confirmation is required
-    // If session exists, user is auto-confirmed (Supabase setting is OFF)
-    // If no session, email confirmation is required (Supabase setting is ON)
-    const { data: sessionData } = await supabase.auth.getSession()
-
-    if (!sessionData.session) {
-      // Email confirmation required
-      return { needsConfirmation: true }
     }
   }
 
-  // If we get here, user is auto-confirmed, redirect to dashboard
   redirect('/dashboard')
 }
 
@@ -93,7 +81,7 @@ export async function signIn(formData: FormData) {
   })
 
   if (error) {
-    return { error: error.message }
+    return { error: authErrorMessage(error) }
   }
 
   // Redirect to dashboard after successful login
@@ -102,10 +90,10 @@ export async function signIn(formData: FormData) {
 
 export async function signOut() {
   const supabase = await createClient()
-  
+
   // Sign out the user
   await supabase.auth.signOut()
-  
+
   // Redirect to home page
   redirect('/')
 }

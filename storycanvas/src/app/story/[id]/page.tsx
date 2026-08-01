@@ -31,6 +31,10 @@ const COLLAB_TIMING = {
   SAVE_DEBOUNCE_MS: 300,              // Minimum time between saves
 }
 
+// How often to write unsaved work to the server on its own. Saves otherwise
+// only happen on blur / navigation / tab close.
+const AUTOSAVE_INTERVAL_MS = 10000
+
 // Use the HTML canvas instead to avoid Jest worker issues completely
 const Bibliarch = dynamic(
   () => import('@/components/canvas/HTMLCanvas'),
@@ -81,7 +85,13 @@ export default function StoryPage({ params }: PageProps) {
   const { data: story, isLoading: isStoryLoading } = useStory(resolvedParams.id)
   const { data: storyAccess } = useStoryAccess(resolvedParams.id)
   const { data: collaborators } = useCollaborators(resolvedParams.id)
-  const { data: canvasDataFromQuery, isLoading: isCanvasLoading } = useCanvas(resolvedParams.id, currentCanvasId)
+  const {
+    data: canvasDataFromQuery,
+    isLoading: isCanvasLoading,
+    isError: isCanvasError,
+    error: canvasError,
+    refetch: refetchCanvas,
+  } = useCanvas(resolvedParams.id, currentCanvasId)
   const updateStoryMutation = useUpdateStory()
   const saveCanvasMutation = useSaveCanvas()
 
@@ -205,8 +215,17 @@ export default function StoryPage({ params }: PageProps) {
     username
   )
 
+  // Is anyone else currently in this canvas? Kept in a ref so the autosave
+  // interval can consult it without re-creating itself on every presence change.
+  const othersPresentRef = useRef(false)
+  useEffect(() => {
+    othersPresentRef.current = Object.keys(presenceState).some(id => id !== user?.id)
+  }, [presenceState, user?.id])
+
   // Ref to store the save function so handleSaveRequest can access it
-  const handleSaveCanvasRef = useRef<((nodes: any[], connections: any[]) => Promise<void>) | null>(null)
+  const handleSaveCanvasRef = useRef<
+    ((nodes: any[], connections: any[], bypassDebounce?: boolean) => Promise<void>) | null
+  >(null)
 
   // Handle save request from collaborators (when they navigate, they ask us to save)
   const handleSaveRequest = useCallback(() => {
@@ -423,6 +442,21 @@ export default function StoryPage({ params }: PageProps) {
   const canvasTransitionTimeout = useRef<NodeJS.Timeout | null>(null) // Cleanup ref for transition timeout
   const lastKnownNodeCount = useRef<Record<string, number>>({}) // Track node counts per canvas to prevent saving empty data
 
+  // Trailing-edge save queue. pendingSave always holds the newest state; the
+  // timer writes it once the burst of edits stops; waiters are callers that
+  // awaited a save which got deferred.
+  const pendingSave = useRef<{ nodes: any[]; connections: any[]; canvasId: string } | null>(null)
+  const saveTimer = useRef<NodeJS.Timeout | null>(null)
+  const saveWaiters = useRef<Array<() => void>>([])
+
+  // Serialized copy of the last payload we successfully wrote, so the periodic
+  // autosave doesn't re-upload an unchanged canvas every 10 seconds. Compared
+  // in full rather than by a cheap fingerprint - a false "unchanged" here would
+  // silently drop someone's work, which is the exact bug we're fixing.
+  const lastWrittenSignature = useRef('')
+  const canvasSignature = (nodes: any[], connections: any[]) =>
+    JSON.stringify({ nodes, connections })
+
   // Set up the collaborator removed handler now that isInternalNavigation is available
   useEffect(() => {
     handleCollaboratorRemovedRef.current = () => {
@@ -452,6 +486,21 @@ export default function StoryPage({ params }: PageProps) {
     if (isCanvasLoading) {
       setIsLoadingCanvas(true)
       isLoadingCanvasRef.current = true
+      return
+    }
+
+    // The query failed (offline, egress limit, RLS, JWT). Previously nothing
+    // handled this, so isLoadingCanvas stayed true forever and the user had to
+    // reload the tab. Clear the loading state and let the error banner render.
+    if (isCanvasError) {
+      console.error('❌ Canvas query failed:', canvasError)
+      isCanvasTransition.current = false
+      if (canvasTransitionTimeout.current) {
+        clearTimeout(canvasTransitionTimeout.current)
+        canvasTransitionTimeout.current = null
+      }
+      setIsLoadingCanvas(false)
+      isLoadingCanvasRef.current = false
       return
     }
 
@@ -875,7 +924,7 @@ export default function StoryPage({ params }: PageProps) {
         canvasTransitionTimeout.current = null
       }, COLLAB_TIMING.CANVAS_TRANSITION_TIMEOUT)
     }
-  }, [canvasDataFromQuery, isCanvasLoading, currentCanvasId, storyAccess?.isOwner])
+  }, [canvasDataFromQuery, isCanvasLoading, isCanvasError, canvasError, currentCanvasId, storyAccess?.isOwner])
 
   // Load and apply palette from database when canvas data is loaded
   useEffect(() => {
@@ -889,22 +938,8 @@ export default function StoryPage({ params }: PageProps) {
     }
   }, [canvasDataFromQuery?.palette, currentCanvasId, resolvedParams.id])
 
-  const handleSaveCanvas = useCallback(async (nodes: any[], connections: any[] = [], bypassDebounce = false) => {
-    const saveToCanvasId = currentCanvasIdRef.current
-
-    if (!user?.id) {
-      console.warn('No user found, skipping save')
-      return
-    }
-
-    // Debounce rapid saves to prevent conflicts (skip for navigation saves)
-    const now = Date.now()
-    if (!bypassDebounce && now - lastSaveTime.current < COLLAB_TIMING.SAVE_DEBOUNCE_MS) {
-      console.log('📡 Debouncing save - too soon after last save')
-      return
-    }
-    lastSaveTime.current = now
-
+  // The actual write. Every guard that can refuse a save lives here.
+  const writeCanvas = useCallback(async (nodes: any[], connections: any[], saveToCanvasId: string) => {
     // CRITICAL: Prevent saving empty data when we previously had data
     // This protects against race conditions during loading/navigation that could wipe out user data
     const previousNodeCount = lastKnownNodeCount.current[saveToCanvasId] || 0
@@ -914,21 +949,19 @@ export default function StoryPage({ params }: PageProps) {
       return // Abort the save
     }
 
-    // CRITICAL: Safety check to prevent overwriting main canvas with folder data
-    // If we're about to save to main canvas but data looks suspiciously small, abort
-    if (saveToCanvasId === 'main') {
+    // Safety check against a load/navigation race writing a half-populated canvas
+    // over a full one. This used to fire on ANY main-canvas save that dropped to
+    // <=2 nodes, which meant a user who deliberately cleared their board could
+    // never save that - so it is now scoped to the race it was written for:
+    // we only refuse while a load or canvas transition is still in flight.
+    if (saveToCanvasId === 'main' && (isLoadingCanvasRef.current || isCanvasTransition.current)) {
       const existingMainData = latestCanvasData.current
-      // If existing main canvas has data but we're trying to save very little, this is likely wrong
       if (existingMainData?.nodes?.length > 5 && nodes.length <= 2) {
-        console.error('⚠️ PREVENTED DATA LOSS: Attempting to overwrite main canvas with suspiciously small data')
+        console.error('⚠️ PREVENTED DATA LOSS: Suspiciously small main-canvas save during a load/transition')
         console.error('Existing nodes:', existingMainData.nodes.length, 'New nodes:', nodes.length)
         return // Abort the save
       }
     }
-
-    // Update the ref with latest data
-    latestCanvasData.current = { nodes, connections }
-    latestCanvasDataId.current = saveToCanvasId // Track which canvas this data belongs to
 
     // Update last known node count for this canvas (only if we have data)
     if (nodes.length > 0) {
@@ -944,7 +977,129 @@ export default function StoryPage({ params }: PageProps) {
       nodes,
       connections
     })
-  }, [resolvedParams.id, user?.id, saveCanvasMutation])
+
+    lastWrittenSignature.current = canvasSignature(nodes, connections)
+    hasUnsavedChanges.current = false
+  }, [resolvedParams.id, saveCanvasMutation])
+
+  // Write whatever is queued, right now.
+  const flushPendingSave = useCallback(async () => {
+    if (saveTimer.current) {
+      clearTimeout(saveTimer.current)
+      saveTimer.current = null
+    }
+
+    const pending = pendingSave.current
+    pendingSave.current = null
+
+    // Release anyone awaiting this save. Runs on every exit path - a waiter
+    // left unresolved would hang a navigation forever.
+    const releaseWaiters = () => {
+      const waiters = saveWaiters.current
+      saveWaiters.current = []
+      waiters.forEach((resolve) => resolve())
+    }
+
+    if (!pending) {
+      releaseWaiters()
+      return
+    }
+
+    lastSaveTime.current = Date.now()
+
+    try {
+      await writeCanvas(pending.nodes, pending.connections, pending.canvasId)
+    } catch (err) {
+      console.error('❌ Save failed:', err)
+      throw err
+    } finally {
+      releaseWaiters()
+    }
+  }, [writeCanvas])
+
+  const flushPendingSaveRef = useRef(flushPendingSave)
+  useEffect(() => {
+    flushPendingSaveRef.current = flushPendingSave
+  }, [flushPendingSave])
+
+  const handleSaveCanvas = useCallback(async (nodes: any[], connections: any[] = [], bypassDebounce = false) => {
+    const saveToCanvasId = currentCanvasIdRef.current
+
+    if (!user?.id) {
+      console.warn('No user found, skipping save')
+      return
+    }
+
+    // Always record the newest state first, so whenever the write happens it
+    // writes the latest thing the user typed.
+    pendingSave.current = { nodes, connections, canvasId: saveToCanvasId }
+    latestCanvasData.current = { nodes, connections }
+    latestCanvasDataId.current = saveToCanvasId // Track which canvas this data belongs to
+
+    // Rate-limit rapid saves. This used to DROP the save entirely, which is how
+    // people lost text: blur two fields inside 300ms and the second edit was
+    // gone forever. Now the save is deferred to the trailing edge instead.
+    const now = Date.now()
+    if (!bypassDebounce && now - lastSaveTime.current < COLLAB_TIMING.SAVE_DEBOUNCE_MS) {
+      if (!saveTimer.current) {
+        saveTimer.current = setTimeout(() => {
+          saveTimer.current = null
+          flushPendingSaveRef.current().catch(() => {
+            // Already logged in flushPendingSave. Swallow so the timer callback
+            // doesn't produce an unhandled rejection.
+          })
+        }, COLLAB_TIMING.SAVE_DEBOUNCE_MS)
+      }
+      // Callers that await us should not resume until the write actually lands.
+      return new Promise<void>((resolve) => {
+        saveWaiters.current.push(resolve)
+      })
+    }
+
+    await flushPendingSave()
+  }, [user?.id, flushPendingSave])
+
+  // Never leave a queued save behind when this canvas unmounts.
+  useEffect(() => {
+    return () => {
+      if (pendingSave.current) {
+        flushPendingSaveRef.current().catch(() => {})
+      }
+    }
+  }, [])
+
+  // Periodic autosave, for SOLO sessions only.
+  //
+  // Saves otherwise only happen on blur, navigation and beforeunload, so a long
+  // typing session followed by a crash or a closed lid lost everything since the
+  // last blur. That's worth protecting against when you're the only one here.
+  //
+  // With someone else in the canvas it is actively harmful: saving is
+  // last-writer-wins over the whole canvas, so a timer that pushes each client's
+  // full copy on a fixed beat makes the two sides trade the document back and
+  // forth. Collaborative sessions stay on save-when-something-happens, and the
+  // live channel does the syncing.
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (!hasUnsavedChanges.current) return
+      if (othersPresentRef.current) return
+      if (isLoadingCanvasRef.current || isCanvasTransition.current) return
+      if (!latestCanvasData.current?.nodes) return
+      // Only autosave data that belongs to the canvas we're currently on.
+      if (latestCanvasDataId.current !== currentCanvasIdRef.current) return
+
+      const { nodes, connections } = latestCanvasData.current
+      // Nothing actually changed since the last write - don't burn bandwidth.
+      if (canvasSignature(nodes, connections) === lastWrittenSignature.current) {
+        hasUnsavedChanges.current = false
+        return
+      }
+
+      handleSaveCanvasRef.current?.(nodes, connections, true)
+    }, AUTOSAVE_INTERVAL_MS)
+
+    return () => clearInterval(interval)
+  }, [])
 
   // Store handleSaveCanvas in ref so handleSaveRequest can access it
   useEffect(() => {
@@ -956,10 +1111,16 @@ export default function StoryPage({ params }: PageProps) {
     // Update refs
     latestCanvasData.current = { nodes, connections }
     latestCanvasDataId.current = currentCanvasIdRef.current // Track which canvas this data belongs to
-    hasUnsavedChanges.current = true
 
     // Skip broadcasting if we're applying remote changes (prevents echo)
+    //
+    // Note: "unsaved changes" is deliberately NOT set for remote updates. Applying
+    // someone else's edit is not our change to push back - marking it dirty here
+    // meant an idle second user would re-upload the first user's work as if it
+    // were their own, and the two clients would take turns overwriting each other.
     if (isApplyingRemoteChange.current) return
+
+    hasUnsavedChanges.current = true
 
     // CRITICAL: Skip broadcasting while canvas is loading (use ref for immediate access)
     // When User B navigates, canvasData is set to null and isLoadingCanvasRef is set to true
@@ -999,7 +1160,8 @@ export default function StoryPage({ params }: PageProps) {
       const { nodes, connections } = latestCanvasData.current
       if (nodes.length > 0 || connections.length > 0) {
         console.log('💾 Browser navigation save triggered:', currentCanvasIdRef.current)
-        await handleSaveCanvas(nodes, connections)
+        // bypassDebounce: the page may be gone before a deferred write fires.
+        await handleSaveCanvas(nodes, connections, true)
         hasUnsavedChanges.current = false
         console.log('✅ Browser navigation save completed')
       }
@@ -1822,11 +1984,39 @@ export default function StoryPage({ params }: PageProps) {
         />
 
         {/* Loading overlay when switching canvases */}
-        {isLoadingCanvas && (
+        {isLoadingCanvas && !isCanvasError && (
           <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50">
             <div className="text-center">
               <Sparkles className="w-8 h-8 text-sky-600 dark:text-blue-400 mx-auto mb-2" />
               <p className="text-sm text-muted-foreground">Loading canvas...</p>
+            </div>
+          </div>
+        )}
+
+        {/* Load failure - offer a retry instead of an endless spinner */}
+        {isCanvasError && (
+          <div className="absolute inset-0 bg-background/90 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="max-w-sm text-center space-y-3">
+              <p className="font-medium">This canvas didn&apos;t load.</p>
+              <p className="text-sm text-muted-foreground">
+                {(canvasError as Error)?.message === 'Authentication expired'
+                  ? 'Your session expired. Sign in again to keep working.'
+                  : "Usually a connection hiccup. Your work is safe - nothing has been overwritten."}
+              </p>
+              <div className="flex gap-2 justify-center">
+                <Button
+                  onClick={() => {
+                    setIsLoadingCanvas(true)
+                    isLoadingCanvasRef.current = true
+                    refetchCanvas()
+                  }}
+                >
+                  Try again
+                </Button>
+                <Link href="/dashboard">
+                  <Button variant="outline">Back to projects</Button>
+                </Link>
+              </div>
             </div>
           </div>
         )}

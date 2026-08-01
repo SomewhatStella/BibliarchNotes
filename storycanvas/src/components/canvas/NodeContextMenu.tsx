@@ -648,7 +648,34 @@ export const NodeContextMenu: React.FC<NodeContextMenuProps> = ({
       )}
       <Divider />
 
+      {/* Typography - available on every node type */}
+      <SubMenuItem
+        label="Font"
+        options={[
+          { label: 'Default', value: 'default', current: (node.settings?.font ?? 'default') === 'default' },
+          { label: 'Serif', value: 'serif', current: node.settings?.font === 'serif' },
+          { label: 'Rounded', value: 'rounded', current: node.settings?.font === 'rounded' },
+          { label: 'Handwritten', value: 'handwritten', current: node.settings?.font === 'handwritten' },
+          { label: 'Display', value: 'display', current: node.settings?.font === 'display' },
+          { label: 'Mono', value: 'mono', current: node.settings?.font === 'mono' }
+        ]}
+      />
+      <SubMenuItem
+        label="Text Size"
+        options={[
+          { label: 'Normal', value: 'normal', current: (node.settings?.text_size ?? 'normal') === 'normal' },
+          { label: 'Large', value: 'large', current: node.settings?.text_size === 'large' },
+          { label: 'Huge', value: 'huge', current: node.settings?.text_size === 'huge' }
+        ]}
+      />
+      <Divider />
+
       {/* Global settings for all nodes */}
+      <ToggleMenuItem
+        label="Lock Position"
+        settingKey="locked"
+        currentValue={node.settings?.locked ?? false}
+      />
       <MenuItem label="Duplicate" onClick={() => onDuplicate(node.id)} />
       <MenuItem label="Bring to Front" onClick={() => onBringToFront(node.id)} />
       <MenuItem label="Send to Back" onClick={() => onSendToBack(node.id)} />

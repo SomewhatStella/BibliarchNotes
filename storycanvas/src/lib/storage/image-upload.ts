@@ -1,4 +1,15 @@
+// Images live in Supabase Storage and nodes carry only the storage PATH.
+//
+// They used to be stored as base64 data URLs inside the node itself, which broke
+// collaboration outright: every edit broadcasts the whole nodes array over a
+// Supabase Realtime channel, and Realtime caps a message at a few hundred KB. A
+// photo blew past that, the broadcast failed, and the other person's next edit
+// (whose copy of the node had no image) overwrote the uploader's - so the image
+// appeared, flickered to the other side, then vanished for both.
+
 import { createClient } from '@/lib/supabase/client'
+
+const BUCKET = 'story-images'
 
 /**
  * Upload an image file to Supabase Storage
@@ -16,7 +27,7 @@ export async function uploadImage(file: File, userId: string, nodeId: string): P
 
   // Upload to storage with aggressive caching (1 year)
   const { data, error } = await supabase.storage
-    .from('story-images')
+    .from(BUCKET)
     .upload(fileName, file, {
       cacheControl: '31536000', // 1 year in seconds - prevents repeated fetches
       upsert: false
@@ -40,19 +51,47 @@ export async function uploadImage(file: File, userId: string, nodeId: string): P
 export function getImageUrl(storagePath: string | null | undefined): string {
   if (!storagePath) return ''
 
-  // If it's already a full URL or base64, return as-is (backward compatibility)
-  if (storagePath.startsWith('http') || storagePath.startsWith('data:')) {
+  // Pass through anything that's already displayable: external URLs, legacy
+  // base64, and the blob: URL used to preview an image while it uploads.
+  if (
+    storagePath.startsWith('http') ||
+    storagePath.startsWith('data:') ||
+    storagePath.startsWith('blob:')
+  ) {
     return storagePath
   }
 
-  const supabase = createClient()
+  // Built by hand rather than via supabase.storage.getPublicUrl() because this
+  // runs in render for every image on the canvas, and getPublicUrl needs a
+  // client instance. The URL shape is fixed and public.
+  const base = process.env.NEXT_PUBLIC_SUPABASE_URL
+  if (!base) return ''
 
-  // Get public URL for the image
-  const { data } = supabase.storage
-    .from('story-images')
-    .getPublicUrl(storagePath)
+  return `${base}/storage/v1/object/public/${BUCKET}/${storagePath}`
+}
 
-  return data.publicUrl
+/**
+ * Upload an image for a node and return its storage path.
+ *
+ * Resolves the current user itself so callers inside the canvas don't need to
+ * thread a userId through. Returns null instead of throwing: a failed upload
+ * should degrade (caller keeps the local data URL) rather than lose the image.
+ */
+export async function uploadNodeImage(file: File, nodeId: string): Promise<string | null> {
+  try {
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+      console.error('Image upload skipped: not signed in')
+      return null
+    }
+
+    return await uploadImage(file, user.id, nodeId)
+  } catch (err) {
+    console.error('Image upload failed, keeping local copy:', err)
+    return null
+  }
 }
 
 /**
@@ -68,13 +107,29 @@ export async function deleteImage(storagePath: string): Promise<void> {
   const supabase = createClient()
 
   const { error } = await supabase.storage
-    .from('story-images')
+    .from(BUCKET)
     .remove([storagePath])
 
   if (error) {
     console.error('Delete error:', error)
     throw error
   }
+}
+
+/**
+ * Read a File back into a base64 data URL.
+ *
+ * Only used as a fallback when an upload fails: the on-screen preview is a
+ * blob: URL that dies with the tab, so we embed the image the old way rather
+ * than let the user lose it.
+ */
+export function fileToDataURL(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result as string)
+    reader.onerror = () => reject(reader.error)
+    reader.readAsDataURL(file)
+  })
 }
 
 /**

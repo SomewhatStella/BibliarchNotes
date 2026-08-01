@@ -17,7 +17,7 @@ import { ensureDatabaseSetup } from '@/lib/database-init'
 import FeedbackButton from '@/components/feedback/FeedbackButton'
 import { useUser, useProfile, useStoriesPaginated, useCreateStory, useDeleteStory } from '@/lib/hooks/useSupabaseQuery'
 import { InvitationsInbox } from '@/components/collaboration/InvitationsInbox'
-import { useMyInvitations } from '@/lib/hooks/useCollaboration'
+import { useMyInvitations, useLeaveCollaboration } from '@/lib/hooks/useCollaboration'
 
 type Story = {
   id: string
@@ -26,6 +26,9 @@ type Story = {
   created_at: string
   updated_at: string
   settings?: any
+  // Who owns it. Stories you've been invited to appear here too, so this is how
+  // we tell "your project" from "someone else's project you're helping with".
+  user_id?: string
 }
 
 export default function DashboardPage() {
@@ -44,6 +47,7 @@ export default function DashboardPage() {
   } = useStoriesPaginated(user?.id)
   const createStoryMutation = useCreateStory()
   const deleteStoryMutation = useDeleteStory()
+  const leaveCollaborationMutation = useLeaveCollaboration()
 
   // Get pending invitations to filter them out from the stories list
   const { data: pendingInvitations = [] } = useMyInvitations()
@@ -66,6 +70,8 @@ export default function DashboardPage() {
   const [newProjectName, setNewProjectName] = useState('')
   const [newProjectBio, setNewProjectBio] = useState('')
   const [deleteDialog, setDeleteDialog] = useState<{ show: boolean; story: Story | null }>({ show: false, story: null })
+  const [leaveDialog, setLeaveDialog] = useState<{ show: boolean; story: Story | null }>({ show: false, story: null })
+  const [isLeaving, setIsLeaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
 
   // Handle authentication
@@ -247,6 +253,15 @@ export default function DashboardPage() {
   async function handleDeleteStory() {
     if (!deleteDialog.story || !user?.id) return
 
+    // Belt and braces. The database refuses this anyway, but a delete that
+    // silently affects zero rows and reports success is worse than one that
+    // never starts.
+    if (deleteDialog.story.user_id && deleteDialog.story.user_id !== user.id) {
+      console.warn('Refusing to delete a project owned by someone else')
+      setDeleteDialog({ show: false, story: null })
+      return
+    }
+
     setIsDeleting(true)
 
     deleteStoryMutation.mutate(
@@ -262,6 +277,28 @@ export default function DashboardPage() {
         onError: (error) => {
           console.error('Error deleting story:', error)
           setIsDeleting(false)
+        }
+      }
+    )
+  }
+
+  // Leaving a shared project. Removes YOU from it - the project and everyone
+  // else's access are untouched.
+  async function handleLeaveProject() {
+    if (!leaveDialog.story) return
+
+    setIsLeaving(true)
+
+    leaveCollaborationMutation.mutate(
+      { storyId: leaveDialog.story.id },
+      {
+        onSuccess: () => {
+          setLeaveDialog({ show: false, story: null })
+          setIsLeaving(false)
+        },
+        onError: (error) => {
+          console.error('Error leaving project:', error)
+          setIsLeaving(false)
         }
       }
     )
@@ -379,17 +416,35 @@ export default function DashboardPage() {
                             >
                               <Copy className="w-4 h-4 text-gray-400 group-hover:text-sky-600 dark:group-hover:text-blue-400" />
                             </button>
-                            <button
-                              onClick={(e) => {
-                                e.preventDefault()
-                                e.stopPropagation()
-                                setDeleteDialog({ show: true, story })
-                              }}
-                              className="p-1.5 rounded hover:bg-red-100 dark:hover:bg-red-900/20 transition-colors group"
-                              title="Delete story"
-                            >
-                              <Trash2 className="w-4 h-4 text-gray-400 group-hover:text-red-600 dark:group-hover:text-red-400" />
-                            </button>
+                            {/* Only the owner can delete a project. Everyone else
+                                gets to leave it instead - deleting was never
+                                actually possible for them (the database refuses
+                                it), the button just silently did nothing. */}
+                            {story.user_id && user?.id && story.user_id !== user.id ? (
+                              <button
+                                onClick={(e) => {
+                                  e.preventDefault()
+                                  e.stopPropagation()
+                                  setLeaveDialog({ show: true, story })
+                                }}
+                                className="p-1.5 rounded hover:bg-amber-100 dark:hover:bg-amber-900/20 transition-colors group"
+                                title="Leave project"
+                              >
+                                <LogOut className="w-4 h-4 text-gray-400 group-hover:text-amber-600 dark:group-hover:text-amber-400" />
+                              </button>
+                            ) : (
+                              <button
+                                onClick={(e) => {
+                                  e.preventDefault()
+                                  e.stopPropagation()
+                                  setDeleteDialog({ show: true, story })
+                                }}
+                                className="p-1.5 rounded hover:bg-red-100 dark:hover:bg-red-900/20 transition-colors group"
+                                title="Delete story"
+                              >
+                                <Trash2 className="w-4 h-4 text-gray-400 group-hover:text-red-600 dark:group-hover:text-red-400" />
+                              </button>
+                            )}
                           </div>
                         </div>
                         <CardTitle className="line-clamp-1">{story.title}</CardTitle>
@@ -542,6 +597,49 @@ export default function DashboardPage() {
               disabled={isDeleting}
             >
               {isDeleting ? 'Deleting...' : 'Delete Story'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Leave Project Dialog - shown instead of Delete for projects you don't own */}
+      <Dialog open={leaveDialog.show} onOpenChange={(open) => setLeaveDialog({ show: open, story: null })}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Leave Project?</DialogTitle>
+            <DialogDescription>
+              You&apos;ll be removed from &quot;{leaveDialog.story?.title}&quot; and it will disappear
+              from your projects.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4 my-4">
+            <div className="flex items-start gap-3">
+              <div className="text-amber-600 dark:text-amber-400 mt-0.5">👋</div>
+              <div className="flex-1">
+                <ul className="text-sm text-amber-800 dark:text-amber-200 space-y-1">
+                  <li>• Nothing is deleted - the project keeps going without you</li>
+                  <li>• Everyone else keeps their access</li>
+                  <li>• You&apos;ll need a new invite to come back</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setLeaveDialog({ show: false, story: null })}
+              disabled={isLeaving}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleLeaveProject}
+              disabled={isLeaving}
+              className="bg-amber-600 hover:bg-amber-700 text-white"
+            >
+              {isLeaving ? 'Leaving...' : 'Leave Project'}
             </Button>
           </DialogFooter>
         </DialogContent>

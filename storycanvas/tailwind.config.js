@@ -80,10 +80,42 @@ module.exports = {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
+        "fade-up": {
+          from: { opacity: "0", transform: "translateY(24px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
+        float: {
+          "0%, 100%": { transform: "translateY(0px)" },
+          "50%": { transform: "translateY(-14px)" },
+        },
+        "float-slow": {
+          "0%, 100%": { transform: "translateY(0px) rotate(0deg)" },
+          "50%": { transform: "translateY(-22px) rotate(3deg)" },
+        },
+        blob: {
+          "0%, 100%": { transform: "translate(0px, 0px) scale(1)" },
+          "33%": { transform: "translate(30px, -40px) scale(1.1)" },
+          "66%": { transform: "translate(-25px, 25px) scale(0.95)" },
+        },
+        "gradient-pan": {
+          "0%, 100%": { backgroundPosition: "0% 50%" },
+          "50%": { backgroundPosition: "100% 50%" },
+        },
+        "pulse-ring": {
+          "0%": { boxShadow: "0 0 0 0 rgba(245, 158, 11, 0.55)" },
+          "70%": { boxShadow: "0 0 0 14px rgba(245, 158, 11, 0)" },
+          "100%": { boxShadow: "0 0 0 0 rgba(245, 158, 11, 0)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "fade-up": "fade-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) both",
+        float: "float 6s ease-in-out infinite",
+        "float-slow": "float-slow 9s ease-in-out infinite",
+        blob: "blob 14s ease-in-out infinite",
+        "gradient-pan": "gradient-pan 6s ease infinite",
+        "pulse-ring": "pulse-ring 2.2s ease-out infinite",
       },
     },
   },

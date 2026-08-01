@@ -4,12 +4,13 @@ import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { flushSync } from 'react-dom'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { Plus, Minus, MousePointer, Hand, Type, Folder, User, MapPin, Calendar, Undo, Redo, X, List, Move, Image as ImageIcon, Table, Heart, Settings, SlidersHorizontal, TextCursor, Palette, ArrowRight, Menu, Grid3x3, Bold, Italic, Underline, ArrowUpRight, StickyNote, LayoutTemplate, Trash2, Copy, Edit3, Smile, Home, Castle, TreePine, Mountain, Building2, Landmark, Church, Store, Hospital, School, Factory, Waves, Palmtree, Tent, Map, Star, Bookmark, Flag, Compass, Globe, Sun, Moon, Cloud, Zap, Flame, Snowflake, Crown, Shield, Sword, Gem, Key, Lock, Gift, Music, Camera, Gamepad2, Trophy, Target, Lightbulb, Rocket, Anchor, Plane, Car, Ship, Train, FileText, File, ClipboardList, Pin, Paperclip, Sparkles, FolderOpen, Book, BookOpen, Library, Archive, Package, Box, Notebook, FileStack, Circle, Square, Triangle, Diamond, Hexagon, Octagon, Pentagon, Check, Droplet, Flower, Leaf, TreeDeciduous, Drama, Film, Mic, Dice5, Users, UserCircle, Skull, Ghost, Bot, Orbit, Wand2, Baby, Bird, Bug, Cat, Dog, Fish, Rabbit, Snail, Turtle, Squirrel, Rat, Building, Crosshair, ScrollText, CloudOff, Wifi, Loader2, Eye } from 'lucide-react'
+import { Plus, Minus, MousePointer, Hand, Type, Folder, User, MapPin, Calendar, Undo, Redo, X, List, Move, Image as ImageIcon, Table, Heart, Settings, SlidersHorizontal, TextCursor, Palette, ArrowRight, Menu, Grid3x3, Bold, Italic, Underline, ArrowUpRight, StickyNote, LayoutTemplate, Trash2, Copy, Edit3, Smile, Home, Castle, TreePine, Mountain, Building2, Landmark, Church, Store, Hospital, School, Factory, Waves, Palmtree, Tent, Map as MapIcon, Star, Bookmark, Flag, Compass, Globe, Sun, Moon, Cloud, Zap, Flame, Snowflake, Crown, Shield, Sword, Gem, Key, Lock, Gift, Music, Camera, Gamepad2, Trophy, Target, Lightbulb, Rocket, Anchor, Plane, Car, Ship, Train, FileText, File, ClipboardList, Pin, Paperclip, Sparkles, FolderOpen, Book, BookOpen, Library, Archive, Package, Box, Notebook, FileStack, Circle, Square, Triangle, Diamond, Hexagon, Octagon, Pentagon, Check, Droplet, Flower, Leaf, TreeDeciduous, Drama, Film, Mic, Dice5, Users, UserCircle, Skull, Ghost, Bot, Orbit, Wand2, Baby, Bird, Bug, Cat, Dog, Fish, Rabbit, Snail, Turtle, Squirrel, Rat, Building, Crosshair, ScrollText, CloudOff, Wifi, Loader2, Eye } from 'lucide-react'
 import { PaletteSelector } from '@/components/ui/palette-selector'
 import { NodeStylePanel } from '@/components/ui/node-style-panel'
 import { PerformanceOptimizer } from '@/lib/performance-utils'
 import { useColorContext } from '@/components/providers/color-provider'
 import { ColorPaletteManager } from '@/lib/color-palette'
+import { uploadNodeImage, getImageUrl, dataURLToFile, fileToDataURL } from '@/lib/storage/image-upload'
 import { NodeContextMenu } from './NodeContextMenu'
 import { ConnectionContextMenu } from './ConnectionContextMenu'
 import { createClient } from '@/lib/supabase/client'
@@ -65,7 +66,9 @@ interface Node {
   // Node settings
   settings?: {
     // Global settings (all nodes)
-    locked?: boolean
+    locked?: boolean // Pin in place - can't be dragged or resized
+    font?: 'default' | 'serif' | 'rounded' | 'handwritten' | 'display' | 'mono'
+    text_size?: 'normal' | 'large' | 'huge'
     // Image node settings
     show_header?: boolean
     show_caption?: boolean
@@ -239,6 +242,19 @@ export default function HTMLCanvas({
   // Track when applying remote changes to prevent re-broadcasting
   const isApplyingRemote = useRef(false)
 
+  // Serialized copy of the last state we adopted from a collaborator. Used to
+  // recognise - and refuse to re-send - state that originated with them.
+  // `isApplyingRemote` alone is not enough: it's cleared on an animation frame,
+  // and React can run the "state changed" effect after that, so the guard loses
+  // the race and the update gets echoed straight back. Two clients echoing each
+  // other is what kept stale snapshots circulating.
+  const lastRemoteSignature = useRef<string | null>(null)
+
+  // nodeId -> when we last moved it locally. Protects a just-dropped node from
+  // an already-in-flight snapshot that still has its old position.
+  const recentlyMovedRef = useRef<Record<string, number>>({})
+  const RECENT_LOCAL_MOVE_MS = 2500
+
   // Helper to check if user can edit
   const canEdit = !isViewer
 
@@ -258,7 +274,31 @@ export default function HTMLCanvas({
     if (remoteNodes !== undefined && remoteConnections !== undefined) {
       console.log('📡 HTMLCanvas APPLYING remote changes:', remoteNodes.length, 'nodes')
       isApplyingRemote.current = true
-      setNodes(remoteNodes)
+
+      // Keep the positions of anything we moved a moment ago. Broadcasts are
+      // whole-canvas snapshots, so one that was already in flight when you let go
+      // of a node carries that node's OLD position - applying it verbatim made
+      // the node visibly snap back to where it started, then forward again when
+      // your own change came back around.
+      const now = Date.now()
+      const localById = new Map(nodesRef.current.map(n => [n.id, n]))
+      const mergedNodes = remoteNodes.map((remoteNode: any) => {
+        const movedAt = recentlyMovedRef.current[remoteNode.id]
+        if (movedAt && now - movedAt < RECENT_LOCAL_MOVE_MS) {
+          const local = localById.get(remoteNode.id)
+          if (local) return { ...remoteNode, x: local.x, y: local.y }
+        }
+        return remoteNode
+      })
+
+      // Signature of what they SENT, not of what we ended up with. If the merge
+      // above changed nothing, our state matches this and we stay quiet. If we
+      // did keep a local position, our state no longer matches - so the change
+      // gets reported and broadcast, which is right: they need to learn where
+      // the node actually ended up.
+      lastRemoteSignature.current = JSON.stringify({ nodes: remoteNodes, connections: remoteConnections })
+
+      setNodes(mergedNodes)
       setConnections(remoteConnections)
       // Also update visible nodes to include any new nodes
       setVisibleNodeIds(remoteNodes.map((n: any) => n.id))
@@ -711,6 +751,19 @@ export default function HTMLCanvas({
     currentHistoryIndexRef.current = historyIndex
   }, [historyIndex])
 
+  // Table cells only ever grew themselves in onInput, so saved multi-line text
+  // came back one line tall with the rest clipped - which is why typing into a
+  // reloaded table looked like it jumped to the bottom. Size on mount and
+  // whenever the value changes. The data-attribute guard keeps us from reading
+  // scrollHeight (a forced layout) on renders where nothing changed.
+  const autoSizeTableCell = useCallback((el: HTMLTextAreaElement | null) => {
+    if (!el) return
+    if (el.dataset.autosizedFor === el.value) return
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight}px`
+    el.dataset.autosizedFor = el.value
+  }, [])
+
   // Paste handler to strip HTML formatting and paste plain text only
   const handlePlainTextPaste = useCallback((e: React.ClipboardEvent) => {
     e.preventDefault()
@@ -1056,8 +1109,13 @@ export default function HTMLCanvas({
       const isMouse = e.deltaMode === 1 || Math.abs(e.deltaY) >= 20
 
       if (isMouse) {
-        // For mouse wheel, pan the canvas
-        const canvasContainer = canvas.parentElement
+        // For mouse wheel, pan the canvas.
+        //
+        // This used to scroll `canvas.parentElement`, which is the fixed-size
+        // sizing wrapper - it has overflow:hidden and cannot scroll. Combined
+        // with the preventDefault below, that meant mouse wheels did nothing at
+        // all. The element that actually scrolls is scrollContainerRef.
+        const canvasContainer = scrollContainerRef.current
         if (canvasContainer) {
           e.preventDefault()
           // Use deltaY directly for more natural feel, with a multiplier
@@ -1079,8 +1137,26 @@ export default function HTMLCanvas({
   }, [])
 
   // Initialize nodes from props when they change (canvas navigation)
+  const hasInitializedFromProps = useRef(false)
   useEffect(() => {
-    // PERFORMANCE: Removed console.log to reduce CPU load
+    // A successful save writes the saved payload back into the react-query
+    // cache, which flows straight back down here as a "new" initialNodes. That
+    // made every save reload the canvas from props - resetting local state and
+    // wiping the undo stack - and if two saves were in flight the canvas would
+    // visibly flip between their two versions. Ignore data we already have.
+    //
+    // The first run always goes through: on mount `nodes` is seeded from
+    // `initialNodes`, so it compares equal, but visibleNodeIds and history still
+    // need initialising.
+    if (
+      hasInitializedFromProps.current &&
+      JSON.stringify(initialNodes) === JSON.stringify(nodesRef.current) &&
+      JSON.stringify(initialConnections) === JSON.stringify(connectionsRef.current)
+    ) {
+      return
+    }
+    hasInitializedFromProps.current = true
+
     setNodes(initialNodes)
     setConnections(initialConnections)
     setVisibleNodeIds(initialNodes.map(node => node.id))
@@ -1113,6 +1189,17 @@ export default function HTMLCanvas({
     if (isInitialMount.current) return // Don't broadcast on initial mount
     if (isApplyingRemote.current) return
     if (isViewer) return // Viewers should never trigger state changes
+
+    // Never send back exactly what we just received. The flag above is cleared
+    // on an animation frame and this effect can run after it, so on its own it
+    // lets the update echo home - and two clients echoing each other keeps stale
+    // snapshots circulating, which is what made a dropped node jump back.
+    if (lastRemoteSignature.current !== null) {
+      if (JSON.stringify({ nodes, connections }) === lastRemoteSignature.current) return
+      // We've moved on from their state; stop comparing against it.
+      lastRemoteSignature.current = null
+    }
+
     if (onStateChangeRef.current) {
       onStateChangeRef.current(nodes, connections)
     }
@@ -1246,6 +1333,250 @@ export default function HTMLCanvas({
       return newHistory
     })
   }, [maxHistorySize])
+
+  // saveToHistory deep-clones every node and runs two full JSON.stringify
+  // comparisons. Calling it on every keystroke (as table cells used to) makes
+  // typing scale with the size of the whole canvas. This coalesces a burst of
+  // edits into one history entry and one save.
+  const historyDebounceRef = useRef<NodeJS.Timeout | null>(null)
+  const scheduleHistorySave = useCallback((newNodes: Node[], newConnections: Connection[]) => {
+    if (historyDebounceRef.current) {
+      clearTimeout(historyDebounceRef.current)
+    }
+    historyDebounceRef.current = setTimeout(() => {
+      historyDebounceRef.current = null
+      saveToHistory(newNodes, newConnections)
+      handleSaveRef.current(newNodes, newConnections)
+    }, 500)
+  }, [saveToHistory])
+
+  // Don't lose a queued history/save entry if the canvas unmounts mid-burst.
+  useEffect(() => {
+    return () => {
+      if (historyDebounceRef.current) {
+        clearTimeout(historyDebounceRef.current)
+      }
+    }
+  }, [])
+
+  // Move a just-picked image into Supabase Storage and swap the node's local
+  // data URL for the storage path.
+  //
+  // The data URL is kept until the upload lands so the picture appears
+  // instantly, but it must not be what we persist or broadcast: a base64 photo
+  // is megabytes, which overflows the Realtime message cap and takes the whole
+  // canvas broadcast down with it. That is why images "showed on one side then
+  // vanished for both" in collaborative mode.
+  // Previews for images that are still uploading.
+  //
+  // These are deliberately NOT stored on the node. A blob: URL is meaningless
+  // outside this tab, so putting one in the node meant it got broadcast and
+  // saved like any other edit: the collaborator applied a dead URL, echoed it
+  // back, and the uploader's screen flipped between the preview and the real
+  // image until everyone converged. Keeping the preview in local-only state
+  // means a node goes straight from "no image" to "storage path", once.
+  const [imagePreviews, setImagePreviews] = useState<Record<string, string>>({})
+  // Mirror for async callbacks that must not close over a stale snapshot.
+  const imagePreviewsRef = useRef(imagePreviews)
+  imagePreviewsRef.current = imagePreviews
+
+  const previewKeyFor = (nodeId: string, field: 'imageUrl' | 'profileImageUrl') =>
+    `${nodeId}:${field}`
+
+  const setImagePreview = (nodeId: string, field: 'imageUrl' | 'profileImageUrl', url: string) => {
+    setImagePreviews(prev => ({ ...prev, [previewKeyFor(nodeId, field)]: url }))
+  }
+
+  const clearImagePreview = (nodeId: string, field: 'imageUrl' | 'profileImageUrl') => {
+    setImagePreviews(prev => {
+      if (!(previewKeyFor(nodeId, field) in prev)) return prev
+      const next = { ...prev }
+      delete next[previewKeyFor(nodeId, field)]
+      return next
+    })
+  }
+
+  // What an <img> should actually show: the saved image if there is one,
+  // otherwise the local preview of an upload in flight.
+  const resolveImageSrc = (
+    nodeId: string,
+    field: 'imageUrl' | 'profileImageUrl',
+    stored: string | undefined
+  ): string => {
+    if (stored) return getImageUrl(stored)
+    return imagePreviews[previewKeyFor(nodeId, field)] || ''
+  }
+
+  // Warm the browser cache for a storage URL before we point an <img> at it.
+  //
+  // Swapping src straight from the local data URL to the remote one makes the
+  // picture blank out while the network request runs - that's the flicker you
+  // see right after an upload. Decoding first means the swap is instant.
+  const preloadImageUrl = (path: string) =>
+    new Promise<void>((resolve) => {
+      const url = getImageUrl(path)
+      if (!url) return resolve()
+
+      const img = new Image()
+      const done = () => resolve()
+      img.onload = done
+      // Resolve on error too - a failed preload shouldn't block the swap, the
+      // <img> will just do its own request.
+      img.onerror = done
+      img.src = url
+
+      // Never hang on a slow object.
+      setTimeout(done, 5000)
+    })
+
+  const persistNodeImage = useCallback(async (
+    file: File,
+    nodeId: string,
+    field: 'imageUrl' | 'profileImageUrl'
+  ) => {
+    const path = await uploadNodeImage(file, nodeId)
+
+    const preview = imagePreviewsRef.current[previewKeyFor(nodeId, field)]
+
+    if (!path) {
+      // Upload failed. The preview is a blob: URL that won't survive a reload,
+      // so fall back to embedding the image the old way rather than let the user
+      // lose it. It won't sync, but it won't disappear either.
+      console.warn(`Image for node ${nodeId} could not be uploaded; keeping a local copy that won't sync to collaborators.`)
+      try {
+        const dataUrl = await fileToDataURL(file)
+        const fallback = nodesRef.current.map(n => (n.id === nodeId ? { ...n, [field]: dataUrl } : n))
+        setNodes(fallback)
+        saveToHistory(fallback, connectionsRef.current)
+        handleSaveRef.current(fallback, connectionsRef.current)
+        clearImagePreview(nodeId, field)
+        if (preview) setTimeout(() => URL.revokeObjectURL(preview), 5000)
+      } catch (err) {
+        console.error('Could not fall back to an inline copy of the image:', err)
+      }
+      return
+    }
+
+    // Fetch the storage URL before pointing the <img> at it, so the swap from
+    // preview to permanent is invisible instead of a flash of empty space.
+    await preloadImageUrl(path)
+
+    // Read through the ref rather than a state updater: the updater runs twice
+    // under StrictMode, and saving from inside it would double every write.
+    const updated = nodesRef.current.map(n => (n.id === nodeId ? { ...n, [field]: path } : n))
+    setNodes(updated)
+    saveToHistory(updated, connectionsRef.current)
+    handleSaveRef.current(updated, connectionsRef.current)
+
+    // The node now has a real path, which resolveImageSrc prefers, so dropping
+    // the preview is invisible. Revoke on a delay because a profile picture is
+    // mirrored into relationship maps and those copies update on the next sync.
+    clearImagePreview(nodeId, field)
+    if (preview) setTimeout(() => URL.revokeObjectURL(preview), 5000)
+  }, [saveToHistory])
+
+  // Lift any images that are still stored as base64 into Supabase Storage.
+  //
+  // Every picture uploaded before this change lives inside the canvas row as a
+  // data URL, so it stays unshareable (and keeps bloating every load and
+  // broadcast) until it's moved.
+  //
+  // This runs ONCE per canvas load, uploads quietly in the background, and
+  // applies every result in a single state update at the end. Doing it a few at
+  // a time - re-rendering, re-saving and pushing an undo entry after each one -
+  // is what made an old canvas thrash for the first few seconds after opening.
+  const migratedImagesRef = useRef(new Set<string>())
+  const isMigratingImagesRef = useRef(false)
+  useEffect(() => {
+    if (isViewer) return // Viewers can't write, don't try
+    if (isMigratingImagesRef.current) return
+    // Not while someone else is in here. Saving is last-writer-wins across the
+    // whole canvas, so a background job that rewrites and re-broadcasts every
+    // node is the last thing a shared session needs. It'll run next time this
+    // canvas is opened alone.
+    if (Object.keys(collaborators || {}).length > 1) return
+
+    let cancelled = false
+
+    const run = async () => {
+      // Read current nodes at run time, not render time - the canvas has had a
+      // moment to settle by now.
+      const pending: { nodeId: string; field: 'imageUrl' | 'profileImageUrl'; dataUrl: string }[] = []
+      for (const node of nodesRef.current) {
+        for (const field of ['imageUrl', 'profileImageUrl'] as const) {
+          const value = node[field]
+          const key = `${node.id}:${field}`
+          if (
+            typeof value === 'string' &&
+            value.startsWith('data:') &&
+            !migratedImagesRef.current.has(key)
+          ) {
+            pending.push({ nodeId: node.id, field, dataUrl: value })
+          }
+        }
+      }
+
+      if (pending.length === 0) return
+
+      isMigratingImagesRef.current = true
+      console.log(`🖼️ Moving ${pending.length} inline image(s) into storage in the background`)
+
+      // nodeId:field -> storage path
+      const migrated = new Map<string, string>()
+
+      try {
+        for (const item of pending) {
+          if (cancelled) return
+          const key = `${item.nodeId}:${item.field}`
+          // Mark before attempting so a failure doesn't retry in a tight loop.
+          migratedImagesRef.current.add(key)
+          try {
+            const file = dataURLToFile(item.dataUrl, `${item.nodeId}.jpg`)
+            const path = await uploadNodeImage(file, item.nodeId)
+            if (path) {
+              await preloadImageUrl(path)
+              migrated.set(key, path)
+            }
+          } catch (err) {
+            console.warn('Could not migrate a base64 image to storage:', err)
+          }
+        }
+
+        if (cancelled || migrated.size === 0) return
+
+        // Apply everything at once, merged against the LATEST nodes so anything
+        // the user changed while this was running survives. Only the image
+        // fields are touched.
+        const updated = nodesRef.current.map(node => {
+          const imagePath = migrated.get(`${node.id}:imageUrl`)
+          const profilePath = migrated.get(`${node.id}:profileImageUrl`)
+          if (!imagePath && !profilePath) return node
+          return {
+            ...node,
+            ...(imagePath ? { imageUrl: imagePath } : {}),
+            ...(profilePath ? { profileImageUrl: profilePath } : {}),
+          }
+        })
+
+        setNodes(updated)
+        // Deliberately NOT saveToHistory: this is housekeeping, not something
+        // the user did, and it shouldn't eat an undo step.
+        handleSaveRef.current(updated, connectionsRef.current)
+        console.log(`🖼️ Moved ${migrated.size} image(s) into storage`)
+      } finally {
+        isMigratingImagesRef.current = false
+      }
+    }
+
+    // Give the canvas a beat to settle before doing network work on load.
+    const timer = setTimeout(run, 2000)
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+    // Keyed on the canvas identity, not on `nodes` - re-running this on every
+    // keystroke is what produced the cascade of uploads and re-renders.
+  }, [initialNodes, isViewer, collaborators])
 
   // Undo - CLEAN IMPLEMENTATION
   const undo = useCallback(() => {
@@ -1927,6 +2258,12 @@ export default function HTMLCanvas({
         }
         // Start dragging the node
         const draggedNode = nodes.find(n => n.id === isDragReady)
+        // Locked nodes stay put. Single gate for every node type, since all of
+        // them funnel through isDragReady to begin a drag.
+        if (draggedNode?.settings?.locked) {
+          setIsDragReady(null)
+          return
+        }
         if (draggedNode) {
           // Set initial drag position to node's current position to prevent jump
           setDragPosition({ x: draggedNode.x, y: draggedNode.y })
@@ -1948,6 +2285,11 @@ export default function HTMLCanvas({
       if (distance > resizeThreshold) {
         // Viewers cannot resize nodes
         if (isViewer) {
+          setIsResizeReady(null)
+          return
+        }
+        // Locked nodes can't be resized either
+        if (nodes.find(n => n.id === isResizeReady)?.settings?.locked) {
           setIsResizeReady(null)
           return
         }
@@ -2239,20 +2581,23 @@ export default function HTMLCanvas({
             continue // Skip - can't drop into a list that was inside us
           }
 
-          // Check if dragged node overlaps with list bounds (AABB collision detection)
-          // Get dragged node bounds
-          const draggedRight = dragPosition.x + draggedNodeObj.width
-          const draggedBottom = dragPosition.y + draggedNodeObj.height
+          // Does the dragged node's CENTER land inside the list?
+          //
+          // This used to be a full AABB overlap test, which meant merely
+          // brushing a list's edge while moving something past it swallowed the
+          // node into that list. Matching the folder/character path below
+          // (center-point containment) makes the target only fire when the user
+          // has actually dropped the thing on top of the list.
           const listRight = listNode.x + listNode.width
           const listBottom = listNode.y + listNode.height
+          const draggedCenterX = dragPosition.x + draggedNodeObj.width / 2
+          const draggedCenterY = dragPosition.y + draggedNodeObj.height / 2
 
-          // Check for overlap (not just point-in-box)
-          const isOverlapping = !(
-            dragPosition.x > listRight ||  // dragged is to the right of list
-            draggedRight < listNode.x ||   // dragged is to the left of list
-            dragPosition.y > listBottom || // dragged is below list
-            draggedBottom < listNode.y     // dragged is above list
-          )
+          const isOverlapping =
+            draggedCenterX > listNode.x &&
+            draggedCenterX < listRight &&
+            draggedCenterY > listNode.y &&
+            draggedCenterY < listBottom
 
           if (isOverlapping) {
             // Add the node to the list container
@@ -2412,6 +2757,13 @@ export default function HTMLCanvas({
           return node
         })
 
+        // Remember what we just moved. A collaborator broadcast that was already
+        // in flight when you let go must not drag these back to where they
+        // started - see the merge in the remote sync effect.
+        const movedAt = Date.now()
+        const movedIds = selectedIds.length > 1 ? selectedIds : [draggingNode]
+        movedIds.forEach(id => { recentlyMovedRef.current[id] = movedAt })
+
         // FLUSHSYNC FIX: Force nodes to update synchronously FIRST
         // This renders immediately with new positions
         // Then clear drag states in next batch
@@ -2472,7 +2824,36 @@ export default function HTMLCanvas({
       case 'relationship-canvas': return 'Relationship Map'
       case 'line': return 'Line'
       case 'compact-text': return ''
-      default: return 'New Text Node'
+      // Text nodes start empty so they can be used as titles without first
+      // having to delete the words "New Text Node". The placeholder still tells
+      // you what to do.
+      default: return ''
+    }
+  }
+
+  // Per-node font families, picked from the node's right-click menu. These map
+  // to the next/font variables declared in the root layout.
+  const NODE_FONT_FAMILIES: Record<string, string> = {
+    serif: 'var(--font-serif), Georgia, serif',
+    rounded: 'var(--font-rounded), system-ui, sans-serif',
+    handwritten: 'var(--font-handwritten), cursive',
+    display: 'var(--font-display), Georgia, serif',
+    mono: 'var(--font-geist-mono), ui-monospace, monospace',
+  }
+
+  // Set on the node container so every piece of text inside inherits it.
+  const getNodeFontFamily = (node: Node): string | undefined => {
+    const choice = node.settings?.font
+    if (!choice || choice === 'default') return undefined
+    return NODE_FONT_FAMILIES[choice]
+  }
+
+  // Title scale for text nodes, so a text box can be used as a heading.
+  const getNodeTitleFontSize = (node: Node): string | undefined => {
+    switch (node.settings?.text_size) {
+      case 'large': return '24px'
+      case 'huge': return '36px'
+      default: return undefined
     }
   }
 
@@ -2903,6 +3284,11 @@ export default function HTMLCanvas({
 
   // DARK BORDER: Strong, prominent border from the color palette
   const getDarkBorderColor = () => {
+    // Demo on the marketing page is always shown on a light backdrop, regardless of
+    // the site theme. Pin the outline to the dark-mode grey so it never washes out.
+    if (storyId === 'demo') {
+      return '#4b5563'
+    }
     return getComputedStyle(document.documentElement)
       .getPropertyValue('--color-border')
       .trim() || 'hsl(var(--border))'
@@ -3032,7 +3418,7 @@ export default function HTMLCanvas({
   // Icon name to component mapping for location/icon type templates
   const iconMap: Record<string, React.ComponentType<{ className?: string; style?: React.CSSProperties }>> = {
     MapPin, Home, Castle, TreePine, Mountain, Building2, Landmark, Church, Store, School, Factory,
-    Waves, Palmtree, Tent, Map, Star, Bookmark, Flag, Compass, Globe, Sun, Moon, Cloud, Zap, Flame,
+    Waves, Palmtree, Tent, Map: MapIcon, Star, Bookmark, Flag, Compass, Globe, Sun, Moon, Cloud, Zap, Flame,
     Snowflake, Crown, Shield, Sword, Gem, Key, Lock, Gift, Music, Camera, Gamepad2, Trophy, Target,
     Lightbulb, Rocket, Heart, User, Anchor, Plane, Car, Ship, Train, Folder
   }
@@ -3047,30 +3433,36 @@ export default function HTMLCanvas({
     return <MapPin className={className} style={style} />
   }
 
+  // Single way into the relationship editor, shared by the node's double-click,
+  // the map panel's double-click and the Edit button on the node header.
+  const openRelationshipEditor = (node: Node) => {
+    // Check if node is locked by another user
+    const lockedBy = lockedNodes[node.id]
+    if (lockedBy) {
+      alert(`This relationship canvas is currently being edited by ${lockedBy.username}`)
+      return
+    }
+
+    // Lock the node for editing
+    if (onNodeLock) {
+      onNodeLock(node.id, 'relationship-editor')
+    }
+
+    // Refresh character list to ensure dropdown is populated
+    refreshAllCharacters()
+    setRelationshipCanvasModal({
+      isOpen: true,
+      nodeId: node.id,
+      node: node
+    })
+  }
+
   const handleNodeClick = (node: Node, e: React.MouseEvent) => {
     e.stopPropagation()
 
     // Handle double-click on relationship-canvas nodes
     if (e.detail === 2 && node.type === 'relationship-canvas') {
-      // Check if node is locked by another user
-      const lockedBy = lockedNodes[node.id]
-      if (lockedBy) {
-        alert(`This relationship canvas is currently being edited by ${lockedBy.username}`)
-        return
-      }
-
-      // Lock the node for editing
-      if (onNodeLock) {
-        onNodeLock(node.id, 'relationship-editor')
-      }
-
-      // Refresh character list to ensure dropdown is populated
-      refreshAllCharacters()
-      setRelationshipCanvasModal({
-        isOpen: true,
-        nodeId: node.id,
-        node: node
-      })
+      openRelationshipEditor(node)
       return
     }
 
@@ -3174,7 +3566,21 @@ export default function HTMLCanvas({
   // Render lock indicator for nodes being edited by other users
   const renderLockIndicator = (nodeId: string) => {
     const lockInfo = lockedNodes[nodeId]
-    if (!lockInfo) return null
+
+    if (!lockInfo) {
+      // Not held by a collaborator - but the owner may have pinned it in place.
+      const isPinned = nodes.find(n => n.id === nodeId)?.settings?.locked
+      if (!isPinned) return null
+
+      return (
+        <div
+          className="absolute -top-2 -right-2 z-40 pointer-events-none rounded-full p-1 shadow-sm bg-background border border-border"
+          title="Locked in place"
+        >
+          <Lock className="w-3 h-3 text-muted-foreground" />
+        </div>
+      )
+    }
 
     return (
       <div
@@ -3370,6 +3776,25 @@ export default function HTMLCanvas({
   }
 
   // Context menu handlers
+  // Move a child up or down inside its list container.
+  const moveChildInList = (listId: string, childId: string, direction: -1 | 1) => {
+    const listNode = nodes.find(n => n.id === listId)
+    if (!listNode?.childIds) return
+
+    const order = [...listNode.childIds]
+    const from = order.indexOf(childId)
+    const to = from + direction
+    if (from === -1 || to < 0 || to >= order.length) return
+
+    order[from] = order[to]
+    order[to] = childId
+
+    const newNodes = nodes.map(n => (n.id === listId ? { ...n, childIds: order } : n))
+    setNodes(newNodes)
+    saveToHistory(newNodes, connections)
+    handleSaveRef.current(newNodes, connections)
+  }
+
   const handleSettingChange = (nodeId: string, setting: string, value: any) => {
     const newNodes = nodes.map(node => {
       if (node.id === nodeId) {
@@ -4127,7 +4552,7 @@ export default function HTMLCanvas({
         Gamepad2, Palette, Drama, Film, Mic, Music, Dice5, Trophy, Sword, Shield,
         User, Users, UserCircle, Crown, Skull, Ghost, Bot, Orbit, Wand2, Baby,
         Bird, Bug, Cat, Dog, Fish, Rabbit, Snail, Turtle, Squirrel, Rat,
-        Castle, Home, Building, Gem, Key, Crosshair, Target, Map, ScrollText, Compass,
+        Castle, Home, Building, Gem, Key, Crosshair, Target, Map: MapIcon, ScrollText, Compass,
       }
       const IconComponent = iconMap[customIcon]
       if (IconComponent) {
@@ -5652,7 +6077,14 @@ export default function HTMLCanvas({
             const renderSettings = PerformanceOptimizer.getOptimalRenderSettings(nodes.length, isMoving)
             const nodeDetails = { showTitle: true, showContent: true } // Always show all details in fixed canvas
             const isDropTarget = dropTarget === node.id
-            const childNodes = node.childIds ? nodes.filter(n => node.childIds?.includes(n.id)) : []
+            // Walk childIds, don't filter the nodes array. Filtering returned
+            // children in whatever order they happened to sit in `nodes` - i.e.
+            // creation order - which is why list items could never be reordered.
+            const childNodes = node.childIds
+              ? (node.childIds
+                  .map(childId => nodes.find(n => n.id === childId))
+                  .filter(Boolean) as Node[])
+              : []
 
             // Render line nodes with curved SVG path
             if (node.type === 'line' && node.linePoints) {
@@ -5798,6 +6230,10 @@ export default function HTMLCanvas({
                   style={{
                     left: getNodeDragPosition(node).x,
                     top: getNodeDragPosition(node).y,
+                    // Inherited by every piece of text in the node
+                    fontFamily: getNodeFontFamily(node),
+                    // Locked nodes shouldn't advertise a drag they won't do
+                    cursor: node.settings?.locked ? 'default' : undefined,
                     width: node.width || 200,
                     minHeight: '32px',
                     maxHeight: '400px',
@@ -5975,6 +6411,10 @@ export default function HTMLCanvas({
                   style={{
                     left: getNodeDragPosition(node).x,
                     top: getNodeDragPosition(node).y,
+                    // Inherited by every piece of text in the node
+                    fontFamily: getNodeFontFamily(node),
+                    // Locked nodes shouldn't advertise a drag they won't do
+                    cursor: node.settings?.locked ? 'default' : undefined,
                     width: node.width || 240,
                     height: node.height || 120,
                     backgroundColor: 'transparent',
@@ -6121,9 +6561,9 @@ export default function HTMLCanvas({
                     )}
 
                     {/* Image */}
-                    {node.imageUrl ? (
+                    {resolveImageSrc(node.id, 'imageUrl', node.imageUrl) ? (
                       <img
-                        src={node.imageUrl}
+                        src={resolveImageSrc(node.id, 'imageUrl', node.imageUrl)}
                         alt="Image"
                         className="cursor-move flex-1"
                         draggable={false}
@@ -6148,58 +6588,66 @@ export default function HTMLCanvas({
                         fileInput.onchange = (e) => {
                           const file = (e.target as HTMLInputElement).files?.[0]
                           if (file) {
-                            const reader = new FileReader()
-                            reader.onload = (event) => {
-                              const imageUrl = event.target?.result as string
-                              const updatedNodes = nodes.map(n =>
-                                n.id === node.id ? { ...n, imageUrl } : n
-                              )
-                              setNodes(updatedNodes)
-                              const tempImg = new Image()
-                              tempImg.onload = () => {
-                                const naturalWidth = tempImg.naturalWidth
-                                const naturalHeight = tempImg.naturalHeight
+                            // Show the picture immediately from a local object
+                            // URL. This never touches node state, so nothing
+                            // half-finished gets saved or broadcast while the
+                            // upload runs - that round trip is what made the
+                            // image flicker between versions on the uploader's
+                            // screen. The node gains its imageUrl once, when the
+                            // storage path is ready.
+                            const imageUrl = URL.createObjectURL(file)
+                            setImagePreview(node.id, 'imageUrl', imageUrl)
+                            const tempImg = new Image()
+                            tempImg.onload = () => {
+                              const naturalWidth = tempImg.naturalWidth
+                              const naturalHeight = tempImg.naturalHeight
 
-                                // Implement reasonable size limits (max 400px)
-                                const maxSize = 400
-                                let imageWidth = naturalWidth
-                                let imageHeight = naturalHeight
+                              // Implement reasonable size limits (max 400px)
+                              const maxSize = 400
+                              let imageWidth = naturalWidth
+                              let imageHeight = naturalHeight
 
-                                // Scale down if either dimension exceeds max size
-                                if (imageWidth > maxSize || imageHeight > maxSize) {
-                                  const scale = Math.min(maxSize / imageWidth, maxSize / imageHeight)
-                                  imageWidth = Math.round(imageWidth * scale)
-                                  imageHeight = Math.round(imageHeight * scale)
-                                }
-                                const resizedNodes = updatedNodes.map(n =>
-                                  n.id === node.id ? {
-                                    ...n,
-                                    width: Math.round(imageWidth),
-                                    height: Math.round(imageHeight),
-                                    attributes: {
-                                      ...n.attributes,
-                                      originalWidth: naturalWidth,
-                                      originalHeight: naturalHeight,
-                                      imageWidth: imageWidth,
-                                      imageHeight: imageHeight
-                                    }
-                                  } : n
-                                )
-                                setNodes(resizedNodes)
-                                saveToHistory(resizedNodes, connections)
-
-                                // Force immediate DOM update for proper sizing
-                                setTimeout(() => {
-                                  const nodeElement = document.querySelector(`[data-node-id="${node.id}"]`) as HTMLElement
-                                  if (nodeElement) {
-                                    nodeElement.style.width = `${Math.round(imageWidth)}px`
-                                    nodeElement.style.height = `${Math.round(imageHeight)}px`
-                                  }
-                                }, 10)
+                              // Scale down if either dimension exceeds max size
+                              if (imageWidth > maxSize || imageHeight > maxSize) {
+                                const scale = Math.min(maxSize / imageWidth, maxSize / imageHeight)
+                                imageWidth = Math.round(imageWidth * scale)
+                                imageHeight = Math.round(imageHeight * scale)
                               }
-                              tempImg.src = imageUrl
+                              // Merge into the freshest nodes, not a render-time
+                              // snapshot, so this can't undo the storage path if
+                              // the upload happens to land first.
+                              const resizedNodes = nodesRef.current.map(n =>
+                                n.id === node.id ? {
+                                  ...n,
+                                  width: Math.round(imageWidth),
+                                  height: Math.round(imageHeight),
+                                  attributes: {
+                                    ...n.attributes,
+                                    originalWidth: naturalWidth,
+                                    originalHeight: naturalHeight,
+                                    imageWidth: imageWidth,
+                                    imageHeight: imageHeight
+                                  }
+                                } : n
+                              )
+                              setNodes(resizedNodes)
+                              saveToHistory(resizedNodes, connections)
+
+                              // Force immediate DOM update for proper sizing
+                              setTimeout(() => {
+                                const nodeElement = document.querySelector(`[data-node-id="${node.id}"]`) as HTMLElement
+                                if (nodeElement) {
+                                  nodeElement.style.width = `${Math.round(imageWidth)}px`
+                                  nodeElement.style.height = `${Math.round(imageHeight)}px`
+                                }
+                              }, 10)
                             }
-                            reader.readAsDataURL(file)
+                            tempImg.src = imageUrl
+                            // The object URL above is only for the instant preview
+                            // and dies with the tab. Upload the real file and swap
+                            // in the storage path, otherwise the image can't be
+                            // shared, synced, or reloaded later.
+                            persistNodeImage(file, node.id, 'imageUrl')
                           }
                           document.body.removeChild(fileInput)
                         }
@@ -6226,58 +6674,66 @@ export default function HTMLCanvas({
                         fileInput.onchange = (e) => {
                           const file = (e.target as HTMLInputElement).files?.[0]
                           if (file) {
-                            const reader = new FileReader()
-                            reader.onload = (event) => {
-                              const imageUrl = event.target?.result as string
-                              const updatedNodes = nodes.map(n =>
-                                n.id === node.id ? { ...n, imageUrl } : n
-                              )
-                              setNodes(updatedNodes)
-                              const tempImg = new Image()
-                              tempImg.onload = () => {
-                                const naturalWidth = tempImg.naturalWidth
-                                const naturalHeight = tempImg.naturalHeight
+                            // Show the picture immediately from a local object
+                            // URL. This never touches node state, so nothing
+                            // half-finished gets saved or broadcast while the
+                            // upload runs - that round trip is what made the
+                            // image flicker between versions on the uploader's
+                            // screen. The node gains its imageUrl once, when the
+                            // storage path is ready.
+                            const imageUrl = URL.createObjectURL(file)
+                            setImagePreview(node.id, 'imageUrl', imageUrl)
+                            const tempImg = new Image()
+                            tempImg.onload = () => {
+                              const naturalWidth = tempImg.naturalWidth
+                              const naturalHeight = tempImg.naturalHeight
 
-                                // Implement reasonable size limits (max 400px)
-                                const maxSize = 400
-                                let imageWidth = naturalWidth
-                                let imageHeight = naturalHeight
+                              // Implement reasonable size limits (max 400px)
+                              const maxSize = 400
+                              let imageWidth = naturalWidth
+                              let imageHeight = naturalHeight
 
-                                // Scale down if either dimension exceeds max size
-                                if (imageWidth > maxSize || imageHeight > maxSize) {
-                                  const scale = Math.min(maxSize / imageWidth, maxSize / imageHeight)
-                                  imageWidth = Math.round(imageWidth * scale)
-                                  imageHeight = Math.round(imageHeight * scale)
-                                }
-                                const resizedNodes = updatedNodes.map(n =>
-                                  n.id === node.id ? {
-                                    ...n,
-                                    width: Math.round(imageWidth),
-                                    height: Math.round(imageHeight),
-                                    attributes: {
-                                      ...n.attributes,
-                                      originalWidth: naturalWidth,
-                                      originalHeight: naturalHeight,
-                                      imageWidth: imageWidth,
-                                      imageHeight: imageHeight
-                                    }
-                                  } : n
-                                )
-                                setNodes(resizedNodes)
-                                saveToHistory(resizedNodes, connections)
-
-                                // Force immediate DOM update for proper sizing
-                                setTimeout(() => {
-                                  const nodeElement = document.querySelector(`[data-node-id="${node.id}"]`) as HTMLElement
-                                  if (nodeElement) {
-                                    nodeElement.style.width = `${Math.round(imageWidth)}px`
-                                    nodeElement.style.height = `${Math.round(imageHeight)}px`
-                                  }
-                                }, 10)
+                              // Scale down if either dimension exceeds max size
+                              if (imageWidth > maxSize || imageHeight > maxSize) {
+                                const scale = Math.min(maxSize / imageWidth, maxSize / imageHeight)
+                                imageWidth = Math.round(imageWidth * scale)
+                                imageHeight = Math.round(imageHeight * scale)
                               }
-                              tempImg.src = imageUrl
+                              // Merge into the freshest nodes, not a render-time
+                              // snapshot, so this can't undo the storage path if
+                              // the upload happens to land first.
+                              const resizedNodes = nodesRef.current.map(n =>
+                                n.id === node.id ? {
+                                  ...n,
+                                  width: Math.round(imageWidth),
+                                  height: Math.round(imageHeight),
+                                  attributes: {
+                                    ...n.attributes,
+                                    originalWidth: naturalWidth,
+                                    originalHeight: naturalHeight,
+                                    imageWidth: imageWidth,
+                                    imageHeight: imageHeight
+                                  }
+                                } : n
+                              )
+                              setNodes(resizedNodes)
+                              saveToHistory(resizedNodes, connections)
+
+                              // Force immediate DOM update for proper sizing
+                              setTimeout(() => {
+                                const nodeElement = document.querySelector(`[data-node-id="${node.id}"]`) as HTMLElement
+                                if (nodeElement) {
+                                  nodeElement.style.width = `${Math.round(imageWidth)}px`
+                                  nodeElement.style.height = `${Math.round(imageHeight)}px`
+                                }
+                              }, 10)
                             }
-                            reader.readAsDataURL(file)
+                            tempImg.src = imageUrl
+                            // The object URL above is only for the instant preview
+                            // and dies with the tab. Upload the real file and swap
+                            // in the storage path, otherwise the image can't be
+                            // shared, synced, or reloaded later.
+                            persistNodeImage(file, node.id, 'imageUrl')
                           }
                           document.body.removeChild(fileInput)
                         }
@@ -6393,6 +6849,10 @@ export default function HTMLCanvas({
                   style={{
                     left: getNodeDragPosition(node).x,
                     top: getNodeDragPosition(node).y,
+                    // Inherited by every piece of text in the node
+                    fontFamily: getNodeFontFamily(node),
+                    // Locked nodes shouldn't advertise a drag they won't do
+                    cursor: node.settings?.locked ? 'default' : undefined,
                     width: node.width || 240,
                     backgroundColor: getNodeColor(node.type || 'text', node.color, node.id),
                     border: `1px solid ${lockedNodes[node.id] ? '#ef4444' : getNodeBorderColor(node.type || 'text')}`,
@@ -6507,8 +6967,9 @@ export default function HTMLCanvas({
                                         n.id === node.id ? { ...n, tableData: updatedTableData } : n
                                       )
                                       setNodes(updatedNodes)
-                                      saveToHistory(updatedNodes, connections)
+                                      scheduleHistorySave(updatedNodes, connections)
                                     }}
+                                    ref={(el) => autoSizeTableCell(el)}
                                     className="w-full bg-transparent outline-none resize-none overflow-hidden"
                                     style={{
                                       color: getTextColor(getNodeColor(node.type || 'text', node.color, node.id)),
@@ -6558,8 +7019,9 @@ export default function HTMLCanvas({
                                           n.id === node.id ? { ...n, tableData: updatedTableData } : n
                                         )
                                         setNodes(updatedNodes)
-                                        saveToHistory(updatedNodes, connections)
+                                        scheduleHistorySave(updatedNodes, connections)
                                       }}
+                                      ref={(el) => autoSizeTableCell(el)}
                                       className="w-full bg-transparent outline-none resize-none overflow-hidden"
                                       style={{
                                         color: getTextColor(getNodeColor(node.type || 'text', node.color, node.id)),
@@ -6778,6 +7240,10 @@ export default function HTMLCanvas({
                   style={{
                     left: getNodeDragPosition(node).x,
                     top: getNodeDragPosition(node).y,
+                    // Inherited by every piece of text in the node
+                    fontFamily: getNodeFontFamily(node),
+                    // Locked nodes shouldn't advertise a drag they won't do
+                    cursor: node.settings?.locked ? 'default' : undefined,
                     width: node.width || 240,
                     height: node.height || 120,
                     backgroundColor: getNodeColor(node.type || 'text', node.color, node.id),
@@ -7020,6 +7486,10 @@ export default function HTMLCanvas({
                   style={{
                     left: getNodeDragPosition(node).x,
                     top: getNodeDragPosition(node).y,
+                    // Inherited by every piece of text in the node
+                    fontFamily: getNodeFontFamily(node),
+                    // Locked nodes shouldn't advertise a drag they won't do
+                    cursor: node.settings?.locked ? 'default' : undefined,
                     width: node.width || 240,
                     height: node.height || 120,
                     backgroundColor: getNodeColor(node.type || 'text', node.color, node.id),
@@ -7385,6 +7855,10 @@ export default function HTMLCanvas({
                   style={{
                     left: getNodeDragPosition(node).x,
                     top: getNodeDragPosition(node).y,
+                    // Inherited by every piece of text in the node
+                    fontFamily: getNodeFontFamily(node),
+                    // Locked nodes shouldn't advertise a drag they won't do
+                    cursor: node.settings?.locked ? 'default' : undefined,
                     width: node.width || 240,
                     height: node.height || 120,
                     backgroundColor: getNodeColor(node.type || 'text', node.color, node.id),
@@ -7517,8 +7991,27 @@ export default function HTMLCanvas({
                         }}
                       />
                     </div>
-                    <div className="text-xs" style={{ color: getTextColor(getNodeColor(node.type || 'text', node.color, node.id)) }}>
-                      {selectedCharacters.length} character{selectedCharacters.length !== 1 ? 's' : ''}
+                    <div className="flex items-center gap-2">
+                      <div className="text-xs" style={{ color: getTextColor(getNodeColor(node.type || 'text', node.color, node.id)) }}>
+                        {selectedCharacters.length} character{selectedCharacters.length !== 1 ? 's' : ''}
+                      </div>
+                      {/* Explicit way in. Editing used to require a double-click
+                          that landed on empty space inside the panel, so the map
+                          read as "locked" to anyone who double-clicked a
+                          character or the header. */}
+                      <button
+                        className="px-2 py-0.5 text-xs rounded border border-border bg-background/80 hover:bg-background shadow-sm"
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          openRelationshipEditor(node)
+                        }}
+                        title="Add characters and relationships"
+                      >
+                        Edit
+                      </button>
                     </div>
                   </div>
 
@@ -7531,31 +8024,14 @@ export default function HTMLCanvas({
                     }`}
                     style={{ height: node.height - 80 }}
                     onDoubleClick={(e) => {
-                      // Only open modal if clicking on empty space (not on characters)
-                      if (e.target === e.currentTarget) {
-                        e.preventDefault()
-                        e.stopPropagation()
+                      // Any double-click inside the map opens the editor, not just
+                      // one that happens to miss every character.
+                      const target = e.target as HTMLElement
+                      if (target.closest('[contenteditable="true"]')) return
 
-                        // Check if node is locked by another user
-                        const lockedBy = lockedNodes[node.id]
-                        if (lockedBy) {
-                          alert(`This relationship canvas is currently being edited by ${lockedBy.username}`)
-                          return
-                        }
-
-                        // Lock the node for editing
-                        if (onNodeLock) {
-                          onNodeLock(node.id, 'relationship-editor')
-                        }
-
-                        // Refresh character list to ensure dropdown is populated
-                        refreshAllCharacters()
-                        setRelationshipCanvasModal({
-                          isOpen: true,
-                          nodeId: node.id,
-                          node: node
-                        })
-                      }
+                      e.preventDefault()
+                      e.stopPropagation()
+                      openRelationshipEditor(node)
                     }}
                   >
                     {selectedCharacters.map(character => {
@@ -7575,27 +8051,48 @@ export default function HTMLCanvas({
                             height: profileSize,
                             left: Math.min(character.position.x, node.width - profileSize - 20),
                             top: Math.min(character.position.y, node.height - profileSize - 100),
-                            zIndex: 10
+                            zIndex: 10,
+                            // Stop the browser treating a drag as a scroll/pan
+                            // gesture on touch devices.
+                            touchAction: 'none'
                           }}
                           title={character.name}
-                          onMouseDown={(e) => {
+                          // Pointer events, not mouse events: this used to bind
+                          // onMouseDown only, so on a phone or tablet the
+                          // characters could not be moved at all and the map was
+                          // unusable. Pointer events cover mouse, touch and pen
+                          // with one code path.
+                          onPointerDown={(e) => {
+                            if (e.button !== 0 && e.pointerType === 'mouse') return
                             e.preventDefault()
                             e.stopPropagation()
 
                             // Set dragging state to prevent canvas dragging
                             setIsDraggingCharacter(true)
 
+                            const dragTarget = e.currentTarget
+                            try {
+                              dragTarget.setPointerCapture(e.pointerId)
+                            } catch {
+                              // Capture is an optimisation; dragging still works without it.
+                            }
+
                             // Always allow dragging
                             const startX = e.clientX
                             const startY = e.clientY
                             const initialX = character.position.x
                             const initialY = character.position.y
+                            const dragZoom = zoom || 1
                             let hasMoved = false
 
-                            const handleMouseMove = (moveEvent: MouseEvent) => {
+                            const handlePointerMove = (moveEvent: PointerEvent) => {
+                              if (moveEvent.pointerId !== e.pointerId) return
                               hasMoved = true
-                              const deltaX = moveEvent.clientX - startX
-                              const deltaY = moveEvent.clientY - startY
+                              // Screen pixels -> canvas pixels. Without this the
+                              // character drifts away from the finger/cursor
+                              // whenever the canvas is zoomed.
+                              const deltaX = (moveEvent.clientX - startX) / dragZoom
+                              const deltaY = (moveEvent.clientY - startY) / dragZoom
 
                               const newX = Math.max(0, Math.min(node.width - profileSize - 20, initialX + deltaX))
                               const newY = Math.max(0, Math.min(node.height - profileSize - 100, initialY + deltaY))
@@ -7616,9 +8113,11 @@ export default function HTMLCanvas({
                               })
                             }
 
-                            const handleMouseUp = () => {
-                              document.removeEventListener('mousemove', handleMouseMove)
-                              document.removeEventListener('mouseup', handleMouseUp)
+                            const handlePointerUp = (upEvent: PointerEvent) => {
+                              if (upEvent.pointerId !== e.pointerId) return
+                              document.removeEventListener('pointermove', handlePointerMove)
+                              document.removeEventListener('pointerup', handlePointerUp)
+                              document.removeEventListener('pointercancel', handlePointerUp)
                               setIsDraggingCharacter(false)
 
                               if (hasMoved) {
@@ -7627,21 +8126,27 @@ export default function HTMLCanvas({
                                 requestAnimationFrame(() => {
                                   setNodes(currentNodes => {
                                     // Call saveToHistory in next tick to avoid state update conflicts
-                                    setTimeout(() => saveToHistory(currentNodes, connections), 0)
+                                    setTimeout(() => {
+                                      saveToHistory(currentNodes, connections)
+                                      // Persist the new layout - moving characters
+                                      // around the map is a real edit.
+                                      handleSaveRef.current(currentNodes, connections)
+                                    }, 0)
                                     return currentNodes // Don't modify nodes
                                   })
                                 })
                               }
                             }
 
-                            document.addEventListener('mousemove', handleMouseMove)
-                            document.addEventListener('mouseup', handleMouseUp)
+                            document.addEventListener('pointermove', handlePointerMove)
+                            document.addEventListener('pointerup', handlePointerUp)
+                            document.addEventListener('pointercancel', handlePointerUp)
                           }}
                         >
                           <div className="w-full h-full rounded-full border-2 overflow-hidden bg-background shadow-sm" style={{ borderColor: getNodeBorderColor(node.type || 'text') }}>
                             {character.profileImageUrl ? (
                               <img
-                                src={character.profileImageUrl}
+                                src={getImageUrl(character.profileImageUrl)}
                                 alt={character.name}
                                 className="w-full h-full object-cover"
                               />
@@ -7935,6 +8440,10 @@ export default function HTMLCanvas({
                   style={{
                     left: getNodeDragPosition(node).x,
                     top: getNodeDragPosition(node).y,
+                    // Inherited by every piece of text in the node
+                    fontFamily: getNodeFontFamily(node),
+                    // Locked nodes shouldn't advertise a drag they won't do
+                    cursor: node.settings?.locked ? 'default' : undefined,
                     width: node.width || 240,
                     height: node.height || 120,
                     backgroundColor: getNodeColor(node.type || 'text', node.color, node.id),
@@ -8082,9 +8591,9 @@ export default function HTMLCanvas({
                         fileInput.click()
                       }}
                     >
-                      {node.profileImageUrl ? (
+                      {resolveImageSrc(node.id, 'profileImageUrl', node.profileImageUrl) ? (
                         <img
-                          src={node.profileImageUrl}
+                          src={resolveImageSrc(node.id, 'profileImageUrl', node.profileImageUrl)}
                           alt="Character profile"
                           className="w-full h-full object-cover"
                         />
@@ -8229,6 +8738,10 @@ export default function HTMLCanvas({
               style={{
                 left: getNodeDragPosition(node).x,
                 top: getNodeDragPosition(node).y,
+                    // Inherited by every piece of text in the node
+                    fontFamily: getNodeFontFamily(node),
+                    // Locked nodes shouldn't advertise a drag they won't do
+                    cursor: node.settings?.locked ? 'default' : undefined,
                 width: node.width || 240,
                 height: node.height || 120,
                 backgroundColor: getNodeColor(node.type || 'text', node.color, node.id),
@@ -8290,8 +8803,12 @@ export default function HTMLCanvas({
 
                   const rect = canvasRef.current?.getBoundingClientRect()
                   if (rect) {
-                    const mouseX = e.clientX - rect.left
-                    const mouseY = e.clientY - rect.top
+                    // Divide by zoom: node.x/y are canvas coordinates, but
+                    // clientX/Y are screen pixels. Without this the node jumps
+                    // away from the cursor the moment the drag starts, and the
+                    // error grows the further you zoom out.
+                    const mouseX = (e.clientX - rect.left) / zoom
+                    const mouseY = (e.clientY - rect.top) / zoom
                     setDragOffset({
                       x: mouseX - node.x,
                       y: mouseY - node.y
@@ -8434,11 +8951,16 @@ export default function HTMLCanvas({
                     onPaste={handlePlainTextPaste}
                     data-content-type="title"
                     className={`flex-1 font-medium text-sm outline-none bg-transparent border-none rounded px-1 ${(editingField?.nodeId === node.id && editingField?.field === 'title') ? 'cursor-text' : 'cursor-move'}`}
+                    data-placeholder="Title..."
                     style={{
                       color: getTextColor(getNodeColor(node.type || 'text', node.color, node.id)),
                       caretColor: getTextColor(getNodeColor(node.type || 'text', node.color, node.id)),
                       pointerEvents: tool === 'event' ? 'none' : 'auto',
-                      userSelect: (editingField?.nodeId === node.id && editingField?.field === 'title') ? 'text' : 'none'
+                      userSelect: (editingField?.nodeId === node.id && editingField?.field === 'title') ? 'text' : 'none',
+                      // Inline beats the text-sm class, which is the point: this
+                      // is what turns a text box into a heading.
+                      fontSize: getNodeTitleFontSize(node),
+                      lineHeight: node.settings?.text_size && node.settings.text_size !== 'normal' ? 1.15 : undefined
                     }}
                     onBlur={(e) => {
                       // PERFORMANCE: Removed console.logs to reduce CPU load
@@ -8506,12 +9028,54 @@ export default function HTMLCanvas({
                           return (
                           <div
                             key={childNode.id}
-                            className="mb-2 last:mb-0"
+                            className="mb-2 last:mb-0 relative"
                             style={{
                               width: '100%',
                               height: childHeight
                             }}
                           >
+                            {/* Reorder controls - list order used to be fixed to
+                                whatever was created first. Only shown while the
+                                list is selected so they stay out of the way. */}
+                            {selectedId === node.id && childNodes.length > 1 && (
+                              <div className="absolute -left-6 top-1/2 -translate-y-1/2 flex flex-col gap-0.5 z-30">
+                                <button
+                                  className="w-5 h-4 flex items-center justify-center rounded-sm border border-border bg-background shadow-sm text-[10px] leading-none disabled:opacity-30"
+                                  disabled={index === 0}
+                                  title="Move up"
+                                  onMouseDown={(e) => e.stopPropagation()}
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    moveChildInList(node.id, childNode.id, -1)
+                                  }}
+                                  onTouchEnd={(e) => {
+                                    e.preventDefault()
+                                    e.stopPropagation()
+                                    moveChildInList(node.id, childNode.id, -1)
+                                  }}
+                                >
+                                  ▲
+                                </button>
+                                <button
+                                  className="w-5 h-4 flex items-center justify-center rounded-sm border border-border bg-background shadow-sm text-[10px] leading-none disabled:opacity-30"
+                                  disabled={index === childNodes.length - 1}
+                                  title="Move down"
+                                  onMouseDown={(e) => e.stopPropagation()}
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    moveChildInList(node.id, childNode.id, 1)
+                                  }}
+                                  onTouchEnd={(e) => {
+                                    e.preventDefault()
+                                    e.stopPropagation()
+                                    moveChildInList(node.id, childNode.id, 1)
+                                  }}
+                                >
+                                  ▼
+                                </button>
+                              </div>
+                            )}
+
                             {/* Render based on node type */}
                             <div
                               className="relative bg-card rounded-lg border-2 cursor-move transition-all duration-200 w-full h-full node-background"
@@ -8573,8 +9137,10 @@ export default function HTMLCanvas({
 
                                   const rect = canvasRef.current?.getBoundingClientRect()
                                   if (rect) {
-                                    const mouseX = e.clientX - rect.left
-                                    const mouseY = e.clientY - rect.top
+                                    // Divide by zoom - see the note on the list
+                                    // node's own drag handler above.
+                                    const mouseX = (e.clientX - rect.left) / zoom
+                                    const mouseY = (e.clientY - rect.top) / zoom
                                     setDragOffset({
                                       x: mouseX - node.x,
                                       y: mouseY - node.y
@@ -8648,9 +9214,9 @@ export default function HTMLCanvas({
                                       }}
                                       title="Click to upload profile picture"
                                     >
-                                      {childNode.profileImageUrl ? (
+                                      {resolveImageSrc(childNode.id, 'profileImageUrl', childNode.profileImageUrl) ? (
                                         <img
-                                          src={childNode.profileImageUrl}
+                                          src={resolveImageSrc(childNode.id, 'profileImageUrl', childNode.profileImageUrl)}
                                           alt="Profile"
                                           className="w-full h-full object-cover"
                                         />
@@ -9812,13 +10378,24 @@ export default function HTMLCanvas({
                 onClick={async () => {
                   if (cropModal) {
                     const croppedImageUrl = await cropImage(cropModal.imageUrl, cropData)
-                    const updatedNodes = nodes.map(n =>
-                      n.id === cropModal.nodeId ? { ...n, profileImageUrl: croppedImageUrl } : n
-                    )
-                    // Sync relationship canvases immediately after updating profile picture
-                    const syncedNodes = syncRelationshipCanvases(updatedNodes)
-                    setNodes(syncedNodes)
-                    saveToHistory(syncedNodes, connections)
+                    const croppedNodeId = cropModal.nodeId
+
+                    // The crop comes back as a data URL. Turn it into a file
+                    // straight away and preview from an object URL: profile
+                    // pictures get copied into every relationship map, so inline
+                    // base64 here bloats the canvas faster than anything else.
+                    const croppedFile = dataURLToFile(croppedImageUrl, `${croppedNodeId}.jpg`)
+
+                    // Same rule as image nodes: show it now from a local preview,
+                    // put nothing on the node until the upload has a real path.
+                    // Profile pictures are mirrored into every relationship map,
+                    // so a half-finished value here spreads the furthest.
+                    setImagePreview(croppedNodeId, 'profileImageUrl', URL.createObjectURL(croppedFile))
+
+                    // Upload and set the storage path. The existing sync effect
+                    // then propagates it to the relationship maps.
+                    persistNodeImage(croppedFile, croppedNodeId, 'profileImageUrl')
+
                     setCropModal(null)
                     setIsDraggingCrop(false)
                     setIsResizingCrop(false)
@@ -9997,7 +10574,7 @@ export default function HTMLCanvas({
                             <div className="w-8 h-8 rounded-full overflow-hidden bg-sky-100 dark:bg-blue-900/20 border border-border flex items-center justify-center flex-shrink-0">
                               {character.profileImageUrl ? (
                                 <img
-                                  src={character.profileImageUrl}
+                                  src={getImageUrl(character.profileImageUrl)}
                                   alt={character.name}
                                   className="w-full h-full object-cover"
                                 />
@@ -10188,7 +10765,7 @@ export default function HTMLCanvas({
                       <div className="w-full h-full rounded-full border-2 border-border overflow-hidden bg-background shadow-md">
                         {character.profileImageUrl ? (
                           <img
-                            src={character.profileImageUrl}
+                            src={getImageUrl(character.profileImageUrl)}
                             alt={character.name}
                             className="w-full h-full object-cover pointer-events-none"
                           />
@@ -10736,7 +11313,7 @@ export default function HTMLCanvas({
           <div className="bg-background rounded-lg shadow-xl border border-border p-6 max-w-md mx-4">
             <h3 className="text-lg font-semibold mb-2">Move to {moveToFolderDialog.targetFolder.type === 'character' ? 'Character' : 'Folder'}?</h3>
             <p className="text-sm text-muted-foreground mb-4">
-              Move &quot;{moveToFolderDialog.node.text || moveToFolderDialog.node.title || 'this node'}&quot; into &quot;{moveToFolderDialog.targetFolder.text || moveToFolderDialog.targetFolder.title}&quot;?
+              Move &quot;{moveToFolderDialog.node.text || moveToFolderDialog.node.title || 'this node'}&quot; into &quot;{moveToFolderDialog.targetFolder.text || moveToFolderDialog.targetFolder.title || (moveToFolderDialog.targetFolder.type === 'character' ? 'this untitled character' : 'this untitled folder')}&quot;?
             </p>
             <p className="text-xs text-muted-foreground mb-4">
               The node will be removed from this canvas and added to the {moveToFolderDialog.targetFolder.type}&apos;s internal canvas.

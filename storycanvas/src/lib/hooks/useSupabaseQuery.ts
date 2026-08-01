@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
+import { readCanvasCache, writeCanvasCache, clearCanvasCache } from '@/lib/canvas-cache'
 
 // Query keys for cache management
 export const queryKeys = {
@@ -193,9 +194,11 @@ export function useCanvas(storyId: string | null | undefined, canvasType: string
         return null
       }
 
-      const { data, error } = await supabase
+      // Step 1: cheap probe. Ask only for the row's identity and updated_at, not
+      // the (potentially multi-megabyte) nodes blob.
+      const probe = await supabase
         .from('canvas_data')
-        .select('id, story_id, canvas_type, nodes, connections, palette, updated_at')
+        .select('id, story_id, canvas_type, updated_at')
         .eq('story_id', storyId)
         .eq('canvas_type', canvasType)
         .order('updated_at', { ascending: false })
@@ -203,16 +206,76 @@ export function useCanvas(storyId: string | null | undefined, canvasType: string
         .single()
 
       // PGRST116 means no rows found, which is normal for new canvases
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error loading canvas:', error.code, error.message, error.details, error.hint)
+      if (probe.error && probe.error.code !== 'PGRST116') {
+        console.error(
+          'Error loading canvas:',
+          probe.error.code,
+          probe.error.message,
+          probe.error.details,
+          probe.error.hint
+        )
 
         // PGRST303 is JWT expired - redirect to login
-        if (error.code === 'PGRST303' || error.message?.includes('JWT') || error.message?.includes('expired')) {
+        if (
+          probe.error.code === 'PGRST303' ||
+          probe.error.message?.includes('JWT') ||
+          probe.error.message?.includes('expired')
+        ) {
           console.error('🔐 JWT expired while loading canvas, user needs to re-authenticate')
           // Invalidate user query to trigger redirect to login
           queryClient.invalidateQueries({ queryKey: queryKeys.user })
           throw new Error('Authentication expired')
         }
+
+        // Any other failure must reject so the UI can show a retry instead of
+        // sitting on a spinner forever.
+        throw probe.error
+      }
+
+      if (!probe.data) {
+        clearCanvasCache(storyId, canvasType)
+        return null
+      }
+
+      // Step 2: if our local copy matches what the server has, use it and skip
+      // the download entirely.
+      const probeRow = probe.data as { id: string; updated_at: string }
+      const cached = readCanvasCache(storyId, canvasType)
+      if (cached && cached.updated_at === probeRow.updated_at) {
+        return {
+          ...probeRow,
+          nodes: cached.nodes,
+          connections: cached.connections,
+          palette: cached.palette,
+        }
+      }
+
+      // Step 3: it changed (or we've never seen it). Fetch the body.
+      const { data, error } = await supabase
+        .from('canvas_data')
+        .select('id, story_id, canvas_type, nodes, connections, palette, updated_at')
+        .eq('id', probeRow.id)
+        .single()
+
+      if (error) {
+        console.error('Error loading canvas body:', error.code, error.message)
+        throw error
+      }
+
+      const row = data as {
+        updated_at: string
+        nodes: any[] | null
+        connections: any[] | null
+        palette: any
+      } | null
+
+      if (row) {
+        writeCanvasCache(storyId, canvasType, {
+          updated_at: row.updated_at,
+          nodes: row.nodes || [],
+          connections: row.connections || [],
+          palette: row.palette,
+        })
       }
 
       return data || null
@@ -220,6 +283,12 @@ export function useCanvas(storyId: string | null | undefined, canvasType: string
     enabled: !!isValidUUID,
     staleTime: 5000, // Consider fresh for 5 seconds to prevent duplicate requests on rapid navigation
     refetchOnMount: 'always', // Always refetch when component mounts (critical for collaboration)
+    // Do NOT refetch when the tab regains focus. Live edits arrive over the
+    // realtime channel; a focus refetch would swap whatever you have on screen
+    // for whatever was last written to the row - which, with two people editing,
+    // can be the other person's older snapshot.
+    refetchOnWindowFocus: false,
+    retry: 1,
   })
 }
 
@@ -364,7 +433,13 @@ export function useSaveCanvas() {
 
       return data
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (data, variables) => {
+      // Use the row the server actually wrote so our cached updated_at matches
+      // what the next probe will see. Falling back to "now" would guarantee a
+      // cache miss (and a full re-download) on the next visit.
+      const savedRow = Array.isArray(data) ? (data[0] as any) : null
+      const updatedAt = savedRow?.updated_at || new Date().toISOString()
+
       // Update the canvas cache optimistically
       queryClient.setQueryData(
         queryKeys.canvas(variables.storyId, variables.canvasType),
@@ -374,9 +449,22 @@ export function useSaveCanvas() {
           nodes: variables.nodes,
           connections: variables.connections,
           palette: variables.palette,
-          updated_at: new Date().toISOString()
+          updated_at: updatedAt
         }
       )
+
+      // Keep the on-disk copy in step so returning to this canvas is a probe,
+      // not a download.
+      if (savedRow?.updated_at) {
+        writeCanvasCache(variables.storyId, variables.canvasType, {
+          updated_at: savedRow.updated_at,
+          nodes: variables.nodes,
+          connections: variables.connections,
+          palette: variables.palette,
+        })
+      } else {
+        clearCanvasCache(variables.storyId, variables.canvasType)
+      }
     },
   })
 }

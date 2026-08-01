@@ -348,9 +348,13 @@ html, body {
   caret-color: currentColor;
 }
 
-/* Placeholder for contentEditable - shows when empty */
+/* Placeholder for contentEditable - shows when empty.
+   Node titles are only contenteditable while actually being edited, so the
+   false state has to be covered too - otherwise a fresh (empty) text node
+   renders as a completely blank box with no hint about what it is. */
 [contenteditable="true"]:empty:before,
-[contenteditable="true"][data-placeholder]:empty:before {
+[contenteditable="true"][data-placeholder]:empty:before,
+[contenteditable="false"][data-placeholder]:empty:before {
   content: attr(data-placeholder);
   color: color-mix(in srgb, var(--node-border-default, hsl(var(--border))) 75%, transparent);
   font-style: italic;
@@ -485,4 +489,45 @@ html, body {
 .node-background [data-content-type="title"],
 .node-background [data-content-type="header"] {
   font-weight: var(--node-font-weight) !important;
+}
+
+/* ===== Prettier page scrollbar (especially on Windows) ===== */
+/* Firefox */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(59, 130, 246, 0.45) transparent;
+}
+html.dark {
+  scrollbar-color: rgba(96, 165, 250, 0.45) transparent;
+}
+
+/* Webkit (Chrome, Edge, Safari) — page scrollbar only */
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+html::-webkit-scrollbar-track,
+body::-webkit-scrollbar-track {
+  background: transparent;
+}
+html::-webkit-scrollbar-thumb,
+body::-webkit-scrollbar-thumb {
+  background-color: rgba(59, 130, 246, 0.45);
+  border-radius: 9999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+  transition: background-color 0.2s ease;
+}
+html::-webkit-scrollbar-thumb:hover,
+body::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(37, 99, 235, 0.7);
+}
+html.dark::-webkit-scrollbar-thumb,
+.dark body::-webkit-scrollbar-thumb {
+  background-color: rgba(96, 165, 250, 0.4);
+}
+html.dark::-webkit-scrollbar-thumb:hover,
+.dark body::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(96, 165, 250, 0.65);
 }

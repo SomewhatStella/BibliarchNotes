@@ -7,6 +7,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { signIn } from '@/lib/auth/actions'
+import { authErrorMessage } from '@/lib/auth/errors'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -27,13 +28,21 @@ export default function LoginPage() {
     setIsLoading(true)
     setError(null)
 
-    const result = await signIn(formData)
+    try {
+      const result = await signIn(formData)
 
-    if (result?.error) {
-      setError(result.error)
+      if (result?.error) {
+        setError(result.error)
+        setIsLoading(false)
+      }
+      // On success signIn redirects, so this component unmounts.
+    } catch (err) {
+      // A successful signIn redirects, which Next signals by throwing. Let it through.
+      if ((err as { digest?: string })?.digest?.startsWith('NEXT_REDIRECT')) throw err
+      console.error('Sign in failed:', err)
+      setError("We couldn't reach the server. Check your connection and try again in a minute.")
       setIsLoading(false)
     }
-    // If successful, signIn will redirect automatically
   }
 
   // Handle password reset request
@@ -51,12 +60,13 @@ export default function LoginPage() {
       })
 
       if (error) {
-        setError(error.message)
+        setError(authErrorMessage(error))
       } else {
         setResetSuccess(true)
       }
     } catch (err) {
-      setError('Failed to send reset email. Please try again.')
+      console.error('Password reset failed:', err)
+      setError("We couldn't reach the server. Check your connection and try again in a minute.")
     }
 
     setIsLoading(false)
@@ -189,8 +199,12 @@ export default function LoginPage() {
               {resetSuccess ? (
                 <div className="space-y-4">
                   <div className="p-3 text-sm text-green-600 bg-green-50 dark:bg-green-900/20 rounded-md">
-                    We've sent a password reset link to <strong>{resetEmail}</strong>.
-                    Check your inbox (and spam folder)!
+                    A password reset link is on its way to <strong>{resetEmail}</strong>.
+                    Check your inbox and your spam folder - it can take a few minutes.
+                  </div>
+                  <div className="p-3 text-xs text-muted-foreground bg-muted/50 rounded-md">
+                    Nothing after 10 minutes? Use the feedback button in the corner and
+                    we&apos;ll reset it by hand.
                   </div>
                   <Button
                     onClick={() => {
