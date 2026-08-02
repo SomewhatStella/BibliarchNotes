@@ -115,6 +115,16 @@ interface NodeStylePreferences {
   outlines: 'dark' | 'light' | 'mixed'
   textColor: 'dark' | 'mixed' | 'light'
   textAlign: 'left' | 'center' | 'right'
+  // Default font for every box. A box that picks its own font overrides this.
+  font: 'default' | 'serif' | 'rounded' | 'handwritten' | 'display' | 'mono'
+}
+
+const DEFAULT_NODE_STYLE_PREFERENCES: NodeStylePreferences = {
+  corners: 'rounded',
+  outlines: 'mixed',
+  textColor: 'dark',
+  textAlign: 'left',
+  font: 'default'
 }
 
 // Custom template interface
@@ -242,6 +252,10 @@ export default function HTMLCanvas({
   // Track when applying remote changes to prevent re-broadcasting
   const isApplyingRemote = useRef(false)
 
+  // Did the current press start on a node? Lets a text drag-select that ends out
+  // over the canvas be told apart from a genuine click on empty space.
+  const interactionStartedInNode = useRef(false)
+
   // Serialized copy of the last state we adopted from a collaborator. Used to
   // recognise - and refuse to re-send - state that originated with them.
   // `isApplyingRemote` alone is not enough: it's cleared on an animation frame,
@@ -363,19 +377,17 @@ export default function HTMLCanvas({
     // Load from localStorage on init (with SSR safety check)
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('neighbornotes-node-styles')
-      return saved ? JSON.parse(saved) : {
-        corners: 'rounded',
-        outlines: 'mixed',
-        textColor: 'dark',
-        textAlign: 'left'
+      if (saved) {
+        try {
+          // Spread over the defaults: anyone who saved preferences before a new
+          // key existed would otherwise get `undefined` for it.
+          return { ...DEFAULT_NODE_STYLE_PREFERENCES, ...JSON.parse(saved) }
+        } catch {
+          return DEFAULT_NODE_STYLE_PREFERENCES
+        }
       }
     }
-    return {
-      corners: 'rounded',
-      outlines: 'mixed',
-      textColor: 'dark',
-      textAlign: 'left'
-    }
+    return DEFAULT_NODE_STYLE_PREFERENCES
   })
   const [paletteRefresh, setPaletteRefresh] = useState(0) // Force re-render when palette changes
   const [draggedNode, setDraggedNode] = useState<string | null>(null)
@@ -1908,6 +1920,22 @@ export default function HTMLCanvas({
       return
     }
 
+    // Drag-selecting text: if you press inside a text field and release past the
+    // edge of the box, the browser fires the click on the canvas (the common
+    // ancestor of press and release). That looked like "clicked empty space", so
+    // we blurred the field and threw the selection away mid-drag. Judge by where
+    // the interaction STARTED, not where it ended.
+    if (interactionStartedInNode.current) {
+      interactionStartedInNode.current = false
+      return
+    }
+
+    // Belt and braces: never tear down an active selection.
+    const activeSelection = window.getSelection()
+    if (activeSelection && activeSelection.toString().length > 0) {
+      return
+    }
+
     // Handle pending template placement (click-to-place)
     if (pendingTemplate) {
       const rect = canvasRef.current?.getBoundingClientRect()
@@ -2001,6 +2029,12 @@ export default function HTMLCanvas({
   }, [tool, nodes, connections, saveToHistory, editingField, visibleNodeIds, pendingTemplate])
 
   const handleCanvasMouseDown = useCallback((e: React.MouseEvent) => {
+    // Remember whether this interaction began inside a node. Used by
+    // handleCanvasClick so that finishing a text drag-select out over the canvas
+    // doesn't get mistaken for clicking empty space.
+    interactionStartedInNode.current =
+      (e.target as HTMLElement).closest('[data-node-id]') !== null
+
     // Blur any active text field when clicking on canvas background
     // This ensures keyboard shortcuts (Ctrl+Z, etc.) work properly
     if (e.target === canvasRef.current) {
@@ -2842,9 +2876,17 @@ export default function HTMLCanvas({
   }
 
   // Set on the node container so every piece of text inside inherits it.
+  //
+  // A box's own font wins. "Default" on a box means "follow the global font"
+  // from the Node Style panel, rather than forcing the built-in sans - otherwise
+  // setting a global font would do nothing for boxes that had ever been touched.
   const getNodeFontFamily = (node: Node): string | undefined => {
-    const choice = node.settings?.font
-    if (!choice || choice === 'default') return undefined
+    const perNode = node.settings?.font
+    const choice =
+      !perNode || perNode === 'default'
+        ? (nodeStylePreferences.font || 'default')
+        : perNode
+    if (choice === 'default') return undefined
     return NODE_FONT_FAMILIES[choice]
   }
 
@@ -4902,6 +4944,65 @@ export default function HTMLCanvas({
         ) : (
           /* Normal Canvas Tools */
           <>
+            {/* Text controls for the selected box, without having to double-click
+                into a field first. Sits at the top so it's reachable without
+                scrolling, and only appears when something is selected so it
+                never pushes the tools down for no reason. */}
+            {selectedId && !isViewer && (() => {
+              const selectedNode = nodes.find(n => n.id === selectedId)
+              if (!selectedNode) return null
+              return (
+                <>
+                  <div className="text-xs text-center text-muted-foreground px-2">
+                    Font
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    {FONT_CHOICES.map(choice => {
+                      const active = (selectedNode.settings?.font ?? 'default') === choice.value
+                      return (
+                        <Button
+                          key={choice.value}
+                          size="sm"
+                          variant={active ? 'default' : 'outline'}
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => handleSettingChange(selectedNode.id, 'font', choice.value)}
+                          className="h-10 w-14 p-0"
+                          title={choice.label}
+                          style={choice.css ? { fontFamily: choice.css } : undefined}
+                        >
+                          <span className="text-base leading-none">Aa</span>
+                        </Button>
+                      )
+                    })}
+                  </div>
+
+                  <div className="text-xs text-center text-muted-foreground px-2 mt-2">
+                    Size
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    {TEXT_SIZE_CHOICES.map(choice => {
+                      const active = (selectedNode.settings?.text_size ?? 'normal') === choice.value
+                      return (
+                        <Button
+                          key={choice.value}
+                          size="sm"
+                          variant={active ? 'default' : 'outline'}
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => handleSettingChange(selectedNode.id, 'text_size', choice.value)}
+                          className="h-10 w-14 p-0"
+                          title={choice.label}
+                        >
+                          <span style={{ fontSize: choice.px, lineHeight: 1 }}>A</span>
+                        </Button>
+                      )
+                    })}
+                  </div>
+
+                  <div className="w-8 h-px bg-border my-2" />
+                </>
+              )
+            })()}
+
             {/* Navigation Tools */}
             <div className="flex flex-col gap-1">
               <Button

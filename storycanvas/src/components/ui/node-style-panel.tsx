@@ -9,6 +9,55 @@ interface NodeStylePreferences {
   outlines: 'dark' | 'light' | 'mixed'
   textColor: 'dark' | 'mixed' | 'light'
   textAlign: 'left' | 'center' | 'right'
+  font: 'default' | 'serif' | 'rounded' | 'handwritten' | 'display' | 'mono'
+}
+
+// Global font choices. These map to the next/font variables set up in the root
+// layout, and each button previews its own face.
+const FONT_OPTIONS: { value: NodeStylePreferences['font']; label: string; css?: string }[] = [
+  { value: 'default', label: 'Default' },
+  { value: 'serif', label: 'Serif', css: 'var(--font-serif), Georgia, serif' },
+  { value: 'rounded', label: 'Rounded', css: 'var(--font-rounded), system-ui, sans-serif' },
+  { value: 'handwritten', label: 'Handwritten', css: 'var(--font-handwritten), cursive' },
+  { value: 'display', label: 'Display', css: 'var(--font-display), Georgia, serif' },
+  { value: 'mono', label: 'Mono', css: 'var(--font-geist-mono), ui-monospace, monospace' },
+]
+
+function FontPicker({
+  current,
+  onChange,
+}: {
+  current: NodeStylePreferences['font']
+  onChange: (value: string) => void
+}) {
+  return (
+    <div className="py-2">
+      <div className="flex items-center justify-between mb-1.5">
+        <span className="text-xs font-medium text-muted-foreground">Font</span>
+        <span className="text-[10px] text-muted-foreground">
+          {FONT_OPTIONS.find(o => o.value === current)?.label ?? 'Default'}
+        </span>
+      </div>
+      <div className="grid grid-cols-6 gap-1">
+        {FONT_OPTIONS.map(option => (
+          <Button
+            key={option.value}
+            size="sm"
+            variant={current === option.value ? 'default' : 'outline'}
+            onClick={() => onChange(option.value)}
+            className="h-7 w-full p-0"
+            title={option.label}
+            style={option.css ? { fontFamily: option.css } : undefined}
+          >
+            <span className="text-xs leading-none">Aa</span>
+          </Button>
+        ))}
+      </div>
+      <p className="text-[10px] text-muted-foreground mt-1 leading-snug">
+        Applies to every box. A box with its own font keeps it.
+      </p>
+    </div>
+  )
 }
 
 interface StyleToggleProps {
@@ -64,6 +113,11 @@ interface NodeStylePanelProps {
 export function NodeStylePanel({ preferences, onUpdate }: NodeStylePanelProps) {
   return (
     <div className="space-y-1">
+        <FontPicker
+          current={preferences.font ?? 'default'}
+          onChange={(value) => onUpdate('font', value)}
+        />
+
         <StyleToggle
           label="Corners"
           options={['sharp', 'rounded', 'very-rounded']}
