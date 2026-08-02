@@ -2831,8 +2831,8 @@ export default function HTMLCanvas({
     }
   }
 
-  // Per-node font families, picked from the node's right-click menu. These map
-  // to the next/font variables declared in the root layout.
+  // Per-node font families, picked from the Text Format sidebar. These map to
+  // the next/font variables declared in the root layout.
   const NODE_FONT_FAMILIES: Record<string, string> = {
     serif: 'var(--font-serif), Georgia, serif',
     rounded: 'var(--font-rounded), system-ui, sans-serif',
@@ -2847,6 +2847,23 @@ export default function HTMLCanvas({
     if (!choice || choice === 'default') return undefined
     return NODE_FONT_FAMILIES[choice]
   }
+
+  // Order shown in the Text Format sidebar. Each swatch renders "Aa" in its own
+  // face so you can see what you're picking in an 80px-wide strip.
+  const FONT_CHOICES: { value: string; label: string; css?: string }[] = [
+    { value: 'default', label: 'Default' },
+    { value: 'serif', label: 'Serif', css: NODE_FONT_FAMILIES.serif },
+    { value: 'rounded', label: 'Rounded', css: NODE_FONT_FAMILIES.rounded },
+    { value: 'handwritten', label: 'Handwritten', css: NODE_FONT_FAMILIES.handwritten },
+    { value: 'display', label: 'Display', css: NODE_FONT_FAMILIES.display },
+    { value: 'mono', label: 'Mono', css: NODE_FONT_FAMILIES.mono },
+  ]
+
+  const TEXT_SIZE_CHOICES: { value: string; label: string; px: number }[] = [
+    { value: 'normal', label: 'Normal', px: 13 },
+    { value: 'large', label: 'Large', px: 17 },
+    { value: 'huge', label: 'Huge', px: 22 },
+  ]
 
   // Title scale for text nodes, so a text box can be used as a heading.
   const getNodeTitleFontSize = (node: Node): string | undefined => {
@@ -4745,6 +4762,65 @@ export default function HTMLCanvas({
               >
                 <Underline className="w-7 h-7" />
               </Button>
+            </div>
+
+            <div className="w-8 h-px bg-border my-2" />
+
+            {/* Font and size. Unlike bold/italic these apply to the whole box,
+                not just the selected words - the font is a property of the node.
+                onMouseDown + preventDefault so clicking one doesn't blur the
+                field you're editing and close this panel. */}
+            <div className="text-xs text-center text-muted-foreground px-2">
+              Font
+            </div>
+            <div className="flex flex-col gap-1">
+              {FONT_CHOICES.map(choice => {
+                const editingNode = nodes.find(n => n.id === editingField.nodeId)
+                const active = (editingNode?.settings?.font ?? 'default') === choice.value
+                return (
+                  <Button
+                    key={choice.value}
+                    size="sm"
+                    variant={active ? 'default' : 'outline'}
+                    onMouseDown={(e) => {
+                      e.preventDefault()
+                      handleSettingChange(editingField.nodeId, 'font', choice.value)
+                    }}
+                    className="h-10 w-14 p-0"
+                    title={choice.label}
+                    style={choice.css ? { fontFamily: choice.css } : undefined}
+                  >
+                    <span className="text-base leading-none">Aa</span>
+                  </Button>
+                )
+              })}
+            </div>
+
+            <div className="w-8 h-px bg-border my-2" />
+
+            <div className="text-xs text-center text-muted-foreground px-2">
+              Size
+            </div>
+            <div className="flex flex-col gap-1">
+              {TEXT_SIZE_CHOICES.map(choice => {
+                const editingNode = nodes.find(n => n.id === editingField.nodeId)
+                const active = (editingNode?.settings?.text_size ?? 'normal') === choice.value
+                return (
+                  <Button
+                    key={choice.value}
+                    size="sm"
+                    variant={active ? 'default' : 'outline'}
+                    onMouseDown={(e) => {
+                      e.preventDefault()
+                      handleSettingChange(editingField.nodeId, 'text_size', choice.value)
+                    }}
+                    className="h-10 w-14 p-0"
+                    title={choice.label}
+                  >
+                    <span style={{ fontSize: choice.px, lineHeight: 1 }}>A</span>
+                  </Button>
+                )
+              })}
             </div>
 
             <div className="w-8 h-px bg-border my-2" />

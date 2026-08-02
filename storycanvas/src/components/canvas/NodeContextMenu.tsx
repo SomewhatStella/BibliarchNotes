@@ -655,27 +655,8 @@ export const NodeContextMenu: React.FC<NodeContextMenuProps> = ({
       )}
       <Divider />
 
-      {/* Typography - available on every node type */}
-      <SubMenuItem
-        label="Font"
-        options={[
-          { label: 'Default', value: 'default', current: (node.settings?.font ?? 'default') === 'default' },
-          { label: 'Serif', value: 'serif', current: node.settings?.font === 'serif' },
-          { label: 'Rounded', value: 'rounded', current: node.settings?.font === 'rounded' },
-          { label: 'Handwritten', value: 'handwritten', current: node.settings?.font === 'handwritten' },
-          { label: 'Display', value: 'display', current: node.settings?.font === 'display' },
-          { label: 'Mono', value: 'mono', current: node.settings?.font === 'mono' }
-        ]}
-      />
-      <SubMenuItem
-        label="Text Size"
-        options={[
-          { label: 'Normal', value: 'normal', current: (node.settings?.text_size ?? 'normal') === 'normal' },
-          { label: 'Large', value: 'large', current: node.settings?.text_size === 'large' },
-          { label: 'Huge', value: 'huge', current: node.settings?.text_size === 'huge' }
-        ]}
-      />
-      <Divider />
+      {/* Font and text size deliberately live in the Text Format sidebar, next to
+          bold/italic/underline, rather than being buried down here. */}
 
       {/* Global settings for all nodes */}
       <ToggleMenuItem
