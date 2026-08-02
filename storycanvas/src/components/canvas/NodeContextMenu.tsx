@@ -522,11 +522,18 @@ export const NodeContextMenu: React.FC<NodeContextMenuProps> = ({
   return (
     <div
       ref={menuRef}
-      className="fixed bg-background rounded-md shadow-lg border border-border z-[10000] min-w-[160px] max-w-[220px] py-1"
+      // max-h + scroll: this menu had neither, so once it grew taller than the
+      // window the bottom simply ran off the screen with no way to reach it.
+      // The font and text-size sections landed down there and were invisible.
+      className="fixed bg-background rounded-md shadow-lg border border-border z-[10000] min-w-[160px] max-w-[220px] py-1 max-h-[75vh] overflow-y-auto overscroll-contain"
       style={{
         left: `${adjustedPosition.x}px`,
         top: `${adjustedPosition.y}px`,
-        touchAction: 'none' // Prevent any touch scrolling on the menu
+        // pan-y, not none: the menu now scrolls, and 'none' would block that on
+        // touch devices - leaving phone and tablet users unable to reach the
+        // bottom of the menu at all. stopPropagation on touchmove below still
+        // keeps the canvas from panning underneath.
+        touchAction: 'pan-y'
       }}
       onTouchStart={(e) => e.stopPropagation()}
       onTouchMove={(e) => e.stopPropagation()}
