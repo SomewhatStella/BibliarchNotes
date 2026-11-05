@@ -1,6 +1,8 @@
 import type { NextConfig } from 'next';
 
 const notesOrigin = process.env.NOTES_ORIGIN || `http://127.0.0.1:${process.env.NOTES_PORT || '5202'}`;
+// Free stand-ins for Georgia, Times New Roman, Arial and Verdana, used in server-made PDFs (src/server-fonts.ts).
+const PDF_FONTS = ['gelasio', 'tinos', 'arimo', 'dejavu-sans'].flatMap(f => [`./node_modules/@fontsource/${f}/*.css`, `./node_modules/@fontsource/${f}/files/*-latin-*.woff2`, `./node_modules/@fontsource/${f}/files/*-latin-ext-*.woff2`]);
 const config: NextConfig = {
   turbopack: { root: process.cwd() },
   devIndicators: false,
@@ -9,8 +11,8 @@ const config: NextConfig = {
   serverExternalPackages: ['@sparticuz/chromium', 'playwright-core', 'playwright'],
   // playwright-core reads data files (e.g. browsers.json) at runtime that the bundler doesn't trace on its own.
   outputFileTracingIncludes: {
-    '/api/pdf': ['./node_modules/@sparticuz/chromium/bin/**', './node_modules/playwright-core/**'],
-    '/api/cover': ['./node_modules/@sparticuz/chromium/bin/**', './node_modules/playwright-core/**'],
+    '/api/pdf': ['./node_modules/@sparticuz/chromium/bin/**', './node_modules/playwright-core/**', ...PDF_FONTS],
+    '/api/cover': ['./node_modules/@sparticuz/chromium/bin/**', './node_modules/playwright-core/**', ...PDF_FONTS],
   },
   // Isolate verification builds from a running studio's .next output.
   distDir: process.env.BIBLIARCH_BUILD_DIR || '.next',

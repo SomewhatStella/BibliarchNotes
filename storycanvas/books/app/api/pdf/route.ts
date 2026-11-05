@@ -1,6 +1,7 @@
 import {PDFDocument} from "pdf-lib";
 import type {Browser} from "playwright-core";
 import {launchBrowser} from "../../../src/server-browser";
+import {withServerFonts} from "../../../src/server-fonts";
 import {
   assertPublishBook,
   buildPrintHtml,
@@ -76,7 +77,7 @@ export async function POST(request: Request): Promise<Response> {
       const bleed=book.format.bleedMm||0;
       const printBook=bleed?{...book,format:{...book.format,widthMm:book.format.widthMm+2*bleed,heightMm:book.format.heightMm+2*bleed,marginMm:book.format.marginMm+bleed,insideMm:(book.format.insideMm??book.format.marginMm)+bleed,outsideMm:(book.format.outsideMm??book.format.marginMm)+bleed,bleedMm:0}}:book;
       async function render(html:string){
-        await page.setContent(html,{waitUntil:'load',timeout:15000});await page.emulateMedia({media:'print'});
+        await page.setContent(withServerFonts(html),{waitUntil:'load',timeout:15000});await page.emulateMedia({media:'print'});
         await page.evaluate(async()=>{await document.fonts.ready;for(const face of document.fonts){await face.load();if(face.status!=='loaded')throw Error('Custom font failed to load');}await Promise.all(Array.from(document.images).map(img=>img.decode()));});
         return page.pdf({preferCSSPageSize:true,printBackground:true});
       }

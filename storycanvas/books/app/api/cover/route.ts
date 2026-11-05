@@ -1,6 +1,7 @@
 import {PDFDocument} from "pdf-lib";
 import type {Browser} from "playwright-core";
 import {launchBrowser} from "../../../src/server-browser";
+import {withServerFonts} from "../../../src/server-fonts";
 import {assertCoverRender, coverHtml, BLEED_MM} from "../../../src/cover";
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -36,7 +37,7 @@ export async function POST(request: Request): Promise<Response> {
     page.setDefaultTimeout(15000);
     // Chromium rounds page sizes to whole pixels; render on a slightly bigger page and
     // crop to the exact size below, because printers check the cover size to the 1/100 inch.
-    await page.setContent(coverHtml(spec, {padMm: 3}), {waitUntil: "load", timeout: 15000});
+    await page.setContent(withServerFonts(coverHtml(spec, {padMm: 3})), {waitUntil: "load", timeout: 15000});
     await page.emulateMedia({media: "print"});
     await page.evaluate(async () => { await document.fonts.ready; await Promise.all(Array.from(document.images).map(img => img.decode())); });
     const pdf = await PDFDocument.load(await page.pdf({preferCSSPageSize: true, printBackground: true}));
