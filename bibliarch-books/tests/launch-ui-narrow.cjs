@@ -1,0 +1,5 @@
+// Isolated read-only browser check; inject source CSS so no rebuild is required.
+const {chromium}=require('playwright');
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+(async()=>{const b=await chromium.launch();try{const c=await b.newContext({viewport:{width:320,height:900}});const p=await c.newPage();await p.goto('http://127.0.0.1:3231/books');await p.addStyleTag({content:fs.readFileSync('app/site.css','utf8')});const controls=await p.locator('.site-navigation a, .site-navigation button').evaluateAll(els=>els.map(e=>({label:e.getAttribute('aria-label')||e.textContent,rect:e.getBoundingClientRect().toJSON()})));for(const {label,rect} of controls){assert.ok(rect.x>=0&&rect.right<=320,`${label} must fit viewport: ${JSON.stringify(rect)}`);}await p.screenshot({path:'docs/launch-books-narrow-source-css.png',fullPage:true});console.log('All navigation controls fit at 320px with source CSS');await c.close();}finally{await b.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

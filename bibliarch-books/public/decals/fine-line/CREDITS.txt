@@ -1,0 +1,9 @@
+Fine-line additions: custom AI-assisted Bibliarch vector compositions.
+These are newly authored SVG paths, not downloaded, traced, or adaptations of Tabler icons.
+CC0-1.0 dedication: https://creativecommons.org/publicdomain/zero/1.0/
+Commercial use and modification permitted; no attribution required. No warranty.
+
+12 additions: Olive whisper; Lavender air; Rose vine; Hanging jasmine; Reed margin; Ivy corner; Silk corner; Pearl swag; Moonlit bough; Quiet arabesque; Ripple thread; Winter bough.
+Source: src/fine-line-ornaments.ts.
+The 12 preserved compositions retain their exact SVGs and credits in src/original-ornaments.ts and /decals/originals/CREDITS.txt.
+Previously placed Tabler assets retain their original MIT provenance at /decals/modern/PROVENANCE.json and /decals/modern/LICENSE.txt; they are not part of the Fine-line picker.

@@ -1,0 +1,17 @@
+import {test,expect} from '@playwright/test';
+import {answerAsk} from './ask';
+import {seed,KEY} from '../src/model';
+async function stored(page:any){return page.evaluate(()=>new Promise<any>((resolve,reject)=>{const r=indexedDB.open('bibliarch-books',1);r.onerror=()=>reject(r.error);r.onsuccess=()=>{const db=r.result;const q=db.transaction('library').objectStore('library').get('bibliarch-books-v1');q.onsuccess=()=>{resolve(JSON.parse(q.result.raw));db.close();};};}));}
+test.beforeEach(async({page})=>{const l=seed();l.books[0].title='Private test manuscript';await page.addInitScript(({key,raw})=>{if(!sessionStorage.getItem('fixture')){localStorage.setItem(key,raw);sessionStorage.setItem('fixture','1');}},{key:KEY,raw:JSON.stringify(l)});await page.goto('/books');await expect(page.getByRole('status').first()).toContainText('Saved on this device');});
+test('cancel, failed write, final deletion and new book survive IndexedDB reload',async({page})=>{
+ const remove=page.getByRole('button',{name:'Delete Private test manuscript',exact:true});
+ await remove.click();await answerAsk(page,false,'Private test manuscript');expect((await stored(page)).books).toHaveLength(1);
+ await page.evaluate(()=>{(window as any).put=IDBObjectStore.prototype.put;IDBObjectStore.prototype.put=function(){throw Error('Test quota failure');};});
+ await remove.click();await answerAsk(page);await expect(page.locator('.error[role="alert"]')).toContainText('not deleted');await expect(remove).toBeVisible();expect((await stored(page)).books).toHaveLength(1);
+ await page.evaluate(()=>{IDBObjectStore.prototype.put=(window as any).put;});
+ await remove.click();await answerAsk(page);await expect(page.getByText('Your first book starts here')).toBeVisible();expect((await stored(page)).books).toHaveLength(0);
+ await page.reload();await expect(page.getByText('Your first book starts here')).toBeVisible();await page.getByRole('button',{name:'Create Blank book',exact:true}).click();await expect.poll(async()=> (await stored(page)).books.length).toBe(1);await page.reload();await expect(page.locator('.studio')).toBeVisible();
+});
+test('bug report draft reloads, saves locally and downloads only explicitly entered fields',async({page})=>{
+ await page.getByRole('button',{name:'Send feedback',exact:true}).click();await page.getByLabel('Summary', {exact:true}).fill('Toolbar problem');await page.getByLabel('Details',{exact:true}).fill('Button is hard to use');await page.getByLabel('Steps to reproduce',{exact:true}).fill('Open toolbar');await page.reload();await page.getByRole('button',{name:'Send feedback',exact:true}).click();await expect(page.getByLabel('Summary',{exact:true})).toHaveValue('Toolbar problem');await page.getByRole('button',{name:'Save report on this device',exact:true}).click();await expect(page.getByRole('dialog')).toContainText('Saved on this device, not sent');const pending=page.waitForEvent('download');await page.getByRole('button',{name:'Download report',exact:true}).click();const download=await pending;const fs=await import('node:fs/promises');const raw=await fs.readFile((await download.path())!,'utf8');expect(raw).toContain('Toolbar problem');expect(raw).not.toContain('Private test manuscript');await page.getByRole('button',{name:'Close report',exact:true}).click();await page.getByRole('button',{name:'Open Private test manuscript',exact:true}).click();await expect(page.getByRole('button',{name:'Send feedback',exact:true})).toBeVisible();
+});

@@ -1,0 +1,21 @@
+# Dependencies and build output
+/node_modules
+/.next*
+/out
+*.tsbuildinfo
+next-env.d.ts.bak
+
+# Secrets: set these in the host's environment settings instead
+.env*.local
+.env
+
+# Local test runs, logs and review screenshots
+/test-results*
+/playwright-report
+/artifacts
+/launch-review
+/bibliarch-books
+/bibliarch-notes
+*.log
+/*.png
+/*-results.txt

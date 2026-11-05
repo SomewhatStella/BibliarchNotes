@@ -1,0 +1,132 @@
+/* Everyday picture controls stay readable without changing the artwork. */
+html[data-ui-theme] .image-mini-toolbar { background:var(--ui-raised)!important; color:var(--ui-ink); flex-wrap:wrap; max-width:calc(100% - 20px); }
+html[data-ui-theme] .image-mini-toolbar button { background:var(--ui-surface); color:var(--ui-ink); border:1px solid var(--ui-line); min-height:36px; }
+html[data-ui-theme] .image-mini-toolbar button:hover { background:var(--ui-hover); color:var(--ui-ink); }
+html[data-ui-theme] .studio .format-row button.add-picture-action { background:var(--ui-accent); color:var(--ui-on-accent); font-weight:700; }
+@media(max-width:700px){.studio .format-row{flex-wrap:nowrap!important;height:56px;min-height:56px;max-height:56px;overflow-x:auto;overflow-y:hidden;align-items:center;scrollbar-width:thin}.studio .format-row>*{flex-shrink:0}.studio .format-row>.toolbar{flex:0 0 auto;overflow:visible}.format-row>button{min-height:44px}.image-mini-toolbar button{min-height:44px!important}}
+/* UI-only palette. Never target paper, pagination bodies, artwork, decals or export markup.
+   Root-qualified selectors outrank route CSS even when it is loaded after this file. */
+html[data-ui-theme='light'] {
+  color-scheme: light;
+  --ui-on-accent: #fff;
+  --ui-brand-yellow: #e8a61c;
+  --ui-ink: #2b2416;
+  --ui-muted: #7a6e57;
+  --ui-accent: #2e5aac;
+  --ui-accent-dark: #234885;
+  --ui-tint: #f8edc8;
+  --ui-line: #e5dcc7;
+  --ui-workspace: #eeede6;
+  --ui-surface: #fdfbf4;
+  --ui-raised: #ffffff;
+  --ui-hover: #f8f2e2;
+  --ui-field: #ffffff;
+  --ui-shadow: 0 12px 38px #2b241618;
+  --ui-well: #efe9dd;
+  --ui-subtle: #6b6358;
+  --ui-paper-stage: #efe9dd;
+}
+html[data-ui-theme='dark'] {
+  color-scheme: dark;
+  --ui-on-accent: #132341;
+  --ui-brand-yellow: #91b5f5;
+  --ui-ink: #f4efdf;
+  --ui-muted: #b8bdc6;
+  --ui-accent: #91b5f5;
+  --ui-accent-dark: #bcd2fa;
+  --ui-tint: #243b5a;
+  --ui-line: #3d485b;
+  --ui-workspace: #131b29;
+  --ui-surface: #1c2636;
+  --ui-raised: #253247;
+  --ui-hover: #2c3b50;
+  --ui-field: #172131;
+  --ui-shadow: 0 12px 38px #0005;
+  --ui-well: #131b28;
+  --ui-subtle: #b8bdc6;
+  --ui-paper-stage: #2a3649;
+}
+/* Deliberately enumerated chrome, not a wildcard over the document tree. */
+:is(html[data-ui-theme='light'], html[data-ui-theme='dark']) :is(body, .studio, .library-home, .masthead, .library-header, .statusbar, .studio .outline.panel, .studio .page-tools, .tool-dialog .panel-heading, .dialog-actions, .page-gallery > header, .page-gallery > footer) {
+  background: var(--ui-surface); color: var(--ui-ink); border-color: var(--ui-line);
+}
+:is(html[data-ui-theme='light'], html[data-ui-theme='dark']) :is(.studio .document-scroller, .gallery-preview, .library-empty, .saved-book-preview) {
+  background: var(--ui-workspace); color: var(--ui-muted); border-color: var(--ui-line);
+}
+:is(html[data-ui-theme='light'], html[data-ui-theme='dark']) :is(.format-row, .section-controls) {
+  background: var(--ui-surface); color: var(--ui-ink); border-color: var(--ui-line);
+}
+:is(html[data-ui-theme='light'], html[data-ui-theme='dark']) :is(.menu > div, .outline-actions[open] > div, .find[open], .advanced-formatting, .settings.tool-dialog, .page-gallery, .saved-book, .modal) {
+  background: var(--ui-raised); color: var(--ui-ink); border-color: var(--ui-line); box-shadow: var(--ui-shadow);
+}
+:is(html[data-ui-theme='light'], html[data-ui-theme='dark']) :is(.format-sections fieldset, .design-tools fieldset, .illustration-canvas-tools, .review-card, .review-tabs, .studio .outline > section, .studio .tool-rail[role=tablist], .studio .tool-panel-heading) {
+  border-color: var(--ui-line);
+}
+:is(html[data-ui-theme='light'], html[data-ui-theme='dark']) .format-sections fieldset { background: var(--ui-surface); }
+/* Controls are scoped to UI containers; thumbnails and actual content are not recolored. */
+:is(html[data-ui-theme='light'], html[data-ui-theme='dark']) :is(.masthead, .format-row, .outline, .page-tools, .tool-dialog, .page-gallery, .library-tools, .library-section-heading, .book-preview-controls, .modal > div) :is(input:not([type=color]):not([type=checkbox]):not([type=range]), select, textarea) {
+  background: var(--ui-field); color: var(--ui-ink); border-color: var(--ui-line);
+}
+:is(html[data-ui-theme='light'], html[data-ui-theme='dark']) :is(.masthead, .format-row, .outline, .page-tools, .tool-dialog, .page-gallery, .library-tools, .book-preview-controls, .modal > div) :is(button, summary, .file-label) {
+  color: var(--ui-ink); border-color: var(--ui-line);
+}
+:is(html[data-ui-theme='light'], html[data-ui-theme='dark']) :is(.page-tools button, .tool-dialog button, .page-type-cards button, .page-style-cards button, .library-tools button, .library-tools .file-label, .home-button) {
+  background: var(--ui-raised);
+}
+:is(html[data-ui-theme='light'], html[data-ui-theme='dark']) :is(.masthead, .format-row, .outline, .page-tools, .tool-dialog, .page-gallery, .library-tools, .book-preview-controls) :is(button, summary, .file-label):hover {
+  background: var(--ui-hover); color: var(--ui-accent-dark);
+}
+:is(html[data-ui-theme='light'], html[data-ui-theme='dark']) :is(.studio .outline .outline-page.selected, .studio .tool-rail button[aria-selected=true], .tool-dialog button[aria-pressed=true], .format-row button[aria-pressed=true], .page-tools button[aria-pressed=true], .page-gallery button[aria-pressed=true]) {
+  background: var(--ui-tint); color: var(--ui-accent-dark); border-color: var(--ui-accent);
+}
+:is(html[data-ui-theme='light'], html[data-ui-theme='dark']) :is(.share, .tool-dialog .primary, .tool-dialog [role=tab][aria-selected=true], .page-gallery .gallery-primary) {
+  background: #2e5aac; color: #fff; border-color: #2e5aac;
+}
+:is(html[data-ui-theme='light'], html[data-ui-theme='dark']) :is(.share, .tool-dialog .primary, .page-gallery .gallery-primary):hover { background: #234885; color: #fff; }
+:is(html[data-ui-theme='light'], html[data-ui-theme='dark']) :is(.studio .outline .outline-page, .document-heading nav > button, .document-heading summary, .page-tools p, .theme-options > button > small, .illustration-canvas-tools small, .crop-controls small, .book-preview > p, .book-preview-controls label, .save, .canvas-note, .library-footer, .muted) { color: var(--ui-muted); }
+:is(html[data-ui-theme='light'], html[data-ui-theme='dark']) :is(.studio .outline h2, .studio .tool-panel-heading, .format-sections legend, .settings h3, .panel h2, .page-gallery h3, .book-preset > strong, .library-brand span, .document-heading > input, .book-preview > h2) { color: var(--ui-ink); }
+:is(html[data-ui-theme='light'], html[data-ui-theme='dark']) .ruler { color: var(--ui-muted); border-color: var(--ui-line); }
+:is(html[data-ui-theme='light'], html[data-ui-theme='dark']) .start-section { background: transparent; border-color: var(--ui-line); }
+:is(html[data-ui-theme='light'], html[data-ui-theme='dark']) :is(.ornament-color-toolbar, .decal-replacement-chooser) button:not([disabled]):where(:not(.decal-replacement-grid button)) {
+  background: var(--ui-field); color: var(--ui-ink); border-color: var(--ui-line);
+}
+:is(html[data-ui-theme='light'], html[data-ui-theme='dark']) :is(.ornament-color-toolbar, .decal-replacement-chooser) button:not([disabled]):hover {
+  background: var(--ui-hover); color: var(--ui-accent-dark);
+}
+:is(html[data-ui-theme='light'], html[data-ui-theme='dark']) :is(.ornament-color-toolbar, .decal-replacement-chooser) button:is([aria-expanded=true], [aria-pressed=true], :active):not([disabled]) {
+  background: var(--ui-tint); color: var(--ui-accent-dark); border-color: var(--ui-accent);
+}
+:is(html[data-ui-theme='light'], html[data-ui-theme='dark']) :is(.ornament-color-toolbar, .decal-replacement-chooser) button:focus-visible {
+  outline: 2px solid var(--ui-accent); outline-offset: 2px;
+}
+:is(html[data-ui-theme='light'], html[data-ui-theme='dark']) :is(.studio, .tool-dialog, .page-gallery, .ornament-color-toolbar, .decal-replacement-chooser) button:disabled {
+  background: var(--ui-surface); color: var(--ui-muted); border-color: var(--ui-line); cursor: not-allowed;
+}
+html[data-ui-theme='dark'] .preset-stage { background: #253247; border-color: var(--ui-line); }
+:is(html[data-ui-theme='light'], html[data-ui-theme='dark']) :is(.document-scroller, .library-home, .tool-content) { scrollbar-color: var(--ui-line) var(--ui-workspace); }
+/* Portal controls are outside the panel tree. Sample cards retain a paper-like
+   substrate so original gray/color artwork remains legible without recoloring. */
+:is(html[data-ui-theme='light'], html[data-ui-theme='dark']) .decal-tray { background: var(--ui-surface); color: var(--ui-ink); }
+:is(html[data-ui-theme='light'], html[data-ui-theme='dark']) :is(.ornament-color-toolbar, .decal-replacement-chooser) { background: var(--ui-raised); color: var(--ui-ink); border-color: var(--ui-line); }
+:is(html[data-ui-theme='light'], html[data-ui-theme='dark']) .decal-replacement-chooser select { background: var(--ui-field); color: var(--ui-ink); border-color: var(--ui-line); }
+html[data-ui-theme='dark'] :is(.decal-tray button, .decal-replacement-grid button, .ornament-buttons button) { background: #fdfbf4; color: #2b2416; border-color: #e5dcc7; }
+html[data-ui-theme='dark'] :is(.decal-tray button, .decal-replacement-grid button, .ornament-buttons button):hover { background: #f8edc8; color: #2b2416; }
+/* Keep native controls inside paper previews in the existing light color scheme. */
+html[data-ui-theme='dark'] :is(.paper, .pagination-page, .page-thumbnail, .preview-page, .book-face) { color-scheme: light; }
+.ui-theme-toggle {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-width: 44px; min-height: 44px; padding: 8px 13px; border-radius: 999px;
+  border: 1px solid var(--ui-line, #e5dcc7); background: var(--ui-raised, #fff);
+  color: var(--ui-ink, #2b2416); font: 600 12px/1.2 var(--ui-font, sans-serif);
+  cursor: pointer; box-shadow: 0 3px 14px #21112616;
+}
+.ui-theme-toggle:hover { background: var(--ui-hover); }
+.ui-theme-toggle:focus-visible { outline: 3px solid var(--ui-accent); outline-offset: 3px; }
+.ui-theme-toggle[aria-pressed=true] { background: var(--ui-raised); color: var(--ui-ink); }
+.ui-theme-toggle--floating { position: fixed; right: max(16px, env(safe-area-inset-right)); bottom: max(38px, env(safe-area-inset-bottom)); z-index: 45; }
+.ui-theme-sun, .ui-theme-moon { font-size: 21px; line-height: 1; }
+.ui-theme-moon { display: none; }
+html[data-ui-theme='dark'] .ui-theme-sun { display: none; }
+html[data-ui-theme='dark'] .ui-theme-moon { display: inline; }
+@media (max-width: 760px) { .ui-theme-toggle--floating { right: 10px; bottom: max(34px, env(safe-area-inset-bottom)); padding: 8px; } .ui-theme-toggle--floating .ui-theme-label { display: none; } }
+@media print { .ui-theme-toggle { display: none !important; } }

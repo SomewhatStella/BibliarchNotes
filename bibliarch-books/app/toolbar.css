@@ -1,0 +1,332 @@
+/* Editor header + formatting bar: one consistent control size, grouped with dividers,
+   a single primary action (Preview & export). Loaded last so it wins over older sheets. */
+
+/* --- Masthead --- */
+html[data-ui-theme] .studio .masthead{display:flex;align-items:center;gap:14px;padding:10px 20px 6px;min-height:0}
+html[data-ui-theme] .studio .masthead .doc-icon{display:none}
+html[data-ui-theme] .studio .masthead .home-button{height:36px;padding:0 14px;border:1px solid var(--ui-line);border-radius:999px;background:var(--ui-raised);color:var(--ui-ink);font-size:14px;font-weight:500;white-space:nowrap}
+html[data-ui-theme] .studio .masthead .home-button:hover{background:var(--ui-hover)}
+html[data-ui-theme] .studio .document-heading{flex:1;min-width:0;gap:0}
+html[data-ui-theme] .studio .document-heading>input{width:min(560px,100%);height:38px;padding:0 8px;margin-left:-8px;border:1px solid transparent;border-radius:8px;background:transparent;font-family:var(--ui-serif);font-size:24px;color:var(--ui-ink);box-shadow:none}
+html[data-ui-theme] .studio .document-heading>input:hover{border-color:var(--ui-line)}
+html[data-ui-theme] .studio .document-heading>input:focus{border-color:var(--ui-accent);background:var(--ui-raised);outline:none}
+html[data-ui-theme] .studio .document-heading nav{display:flex;gap:2px;margin-left:-8px}
+html[data-ui-theme] .studio .document-heading nav summary{padding:3px 8px;border-radius:6px;font-size:13px;color:var(--ui-muted)}
+html[data-ui-theme] .studio .document-heading nav summary:hover,html[data-ui-theme] .studio .document-heading nav details[open]>summary{background:var(--ui-hover);color:var(--ui-ink)}
+html[data-ui-theme] .studio .masthead .save{font-size:13px;color:var(--ui-muted);max-width:340px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html[data-ui-theme] .studio .masthead .share{height:40px;padding:0 20px;border-radius:999px;font-size:15px;font-weight:600;white-space:nowrap}
+html[data-ui-theme] .studio .masthead>.bug-report>button,html[data-ui-theme] .studio .masthead>button:last-child{flex:none}
+
+/* --- Formatting bar --- */
+html[data-ui-theme] .studio .format-row{display:flex;align-items:center;flex-wrap:wrap;gap:2px;margin:4px 16px 8px;padding:5px 8px;min-height:0;border:1px solid var(--ui-line);border-radius:999px;background:var(--ui-raised);box-shadow:0 1px 3px #2b24160d}
+html[data-ui-theme] .studio .format-row .toolbar-host,html[data-ui-theme] .studio .format-row .toolbar{display:contents}
+html[data-ui-theme] .studio .format-row :is(button,summary,select){height:34px;min-width:34px;margin:0;padding:0 10px;border:0;border-radius:8px;background:transparent;color:var(--ui-ink);font:inherit;font-size:14px;font-weight:500;line-height:34px;display:inline-flex;align-items:center;justify-content:center;gap:7px;box-shadow:none;cursor:pointer;white-space:nowrap}
+html[data-ui-theme] .studio .format-row :is(button,summary,select):hover:not(:disabled){background:var(--ui-hover)}
+html[data-ui-theme] .studio .format-row button:disabled{opacity:.35;cursor:default}
+html[data-ui-theme] .studio .format-row button[aria-pressed="true"]{background:var(--ui-tint);color:var(--ui-accent-dark)}
+html[data-ui-theme] .studio .format-row summary{list-style:none}
+html[data-ui-theme] .studio .format-row summary::-webkit-details-marker{display:none}
+html[data-ui-theme] .studio .format-row summary::after{content:"";width:6px;height:6px;margin-left:2px;border:solid currentColor;border-width:0 1.5px 1.5px 0;transform:translateY(-2px) rotate(45deg);opacity:.6}
+html[data-ui-theme] .studio .format-row details[open]>summary{background:var(--ui-tint);color:var(--ui-accent-dark)}
+html[data-ui-theme] .studio .format-row select{appearance:none;-webkit-appearance:none;padding-right:26px;background-image:linear-gradient(45deg,transparent 50%,currentColor 50%),linear-gradient(135deg,currentColor 50%,transparent 50%);background-position:calc(100% - 13px) 15px,calc(100% - 9px) 15px;background-size:4px 4px;background-repeat:no-repeat}
+html[data-ui-theme] .studio .format-row select:hover{background-color:var(--ui-hover)}
+html[data-ui-theme] .studio .format-row select.paragraph-style{min-width:130px;justify-content:flex-start}
+html[data-ui-theme] .studio .format-row>label{display:contents}
+html[data-ui-theme] .studio .format-row .separator{flex:none;width:1px;height:20px;margin:0 6px;padding:0;background:var(--ui-line);border:0}
+html[data-ui-theme] .studio .format-row svg{flex:none}
+html[data-ui-theme] .studio .format-row button[aria-label^="Align"],html[data-ui-theme] .studio .format-row button[aria-label="Undo"],html[data-ui-theme] .studio .format-row button[aria-label="Redo"],html[data-ui-theme] .studio .format-row button[aria-label="Bold"],html[data-ui-theme] .studio .format-row button[aria-label="Italic"],html[data-ui-theme] .studio .format-row button[aria-label="Toggle outline"]{width:34px;padding:0}
+html[data-ui-theme] .studio .format-row button[aria-label="Undo"],html[data-ui-theme] .studio .format-row button[aria-label="Redo"]{font-size:18px}
+html[data-ui-theme] .studio .format-row .glyph-bold{font-weight:800;font-size:16px}
+html[data-ui-theme] .studio .format-row .glyph-italic{font-family:Georgia,'Times New Roman',serif;font-style:italic;font-size:17px;font-weight:500}
+/* Add picture: highlighted but not louder than the real primary action. */
+html[data-ui-theme] .studio .format-row button.add-picture-action{background:var(--ui-tint);color:var(--ui-accent-dark);font-weight:600}
+html[data-ui-theme] .studio .format-row button.add-picture-action:hover{background:var(--ui-tint);filter:brightness(.96)}
+/* Book-level tools sit on the right. */
+html[data-ui-theme] .studio .format-row details.find{margin-left:auto}
+html[data-ui-theme] .studio .format-row .style-button{border:1px solid var(--ui-line);border-radius:999px;padding:0 14px}
+@media (max-width:1200px){html[data-ui-theme] .studio .format-row{border-radius:16px}html[data-ui-theme] .studio .format-row details.find{margin-left:0}}
+/* Win over older !important rules. */
+html[data-ui-theme] .studio .format-row details.find{position:static!important;margin-left:auto!important}
+html[data-ui-theme] .studio .document-heading>input{border-color:transparent!important;background:transparent!important;box-shadow:none!important}
+html[data-ui-theme] .studio .document-heading>input:hover{border-color:var(--ui-line)!important}
+html[data-ui-theme] .studio .document-heading>input:focus{border-color:var(--ui-accent)!important;background:var(--ui-raised)!important}
+html[data-ui-theme] .studio .format-row select{background:transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%237a6e57' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 9px center!important;padding:0 26px 0 10px!important;border:0!important;width:auto!important;min-width:0!important;max-width:150px}
+html[data-ui-theme] .studio .format-row select:hover{background-color:var(--ui-hover)!important}
+html[data-ui-theme] .studio .format-row select.paragraph-style{min-width:128px!important}
+@media (max-width:1200px){html[data-ui-theme] .studio .format-row details.find{margin-left:0!important}}
+/* Compact: dropdowns hug their text; wraps gracefully on narrow screens. */
+html[data-ui-theme] .studio .format-row select{field-sizing:content}
+html[data-ui-theme] .studio .format-row select.paragraph-style{min-width:0!important}
+html[data-ui-theme] .studio .format-row :is(button,summary){padding:0 9px}
+@media (max-width:1500px){html[data-ui-theme] .studio .format-row{border-radius:16px}html[data-ui-theme] .studio .format-row .find-label{display:none}}
+@media (max-width:1500px){html[data-ui-theme] .studio .format-row :is(button,summary){padding:0 7px}html[data-ui-theme] .studio .format-row select{padding-left:7px!important;padding-right:22px!important;background-position:right 7px center!important}html[data-ui-theme] .studio .format-row .separator{margin:0 3px}html[data-ui-theme] .studio .format-row details.find>summary::after{display:none}html[data-ui-theme] .studio .format-row .style-button{padding:0 12px}}
+html[data-ui-theme] .studio .find-panel label{display:inline-flex!important;align-items:center;gap:6px;margin-left:0!important}html[data-ui-theme] .studio .find-panel label>input[type=checkbox]{width:16px!important;height:16px;flex:none!important;margin:0}
+/* Under-page actions: a quiet strip, not a box. */
+html[data-ui-theme] .studio .page-section .section-controls{display:flex!important;align-items:center;justify-content:center;gap:8px;margin:10px 0 18px;padding:0;background:transparent!important;border:0!important;box-shadow:none!important;opacity:.55;transition:opacity .15s}
+html[data-ui-theme] .studio .page-section:hover .section-controls,html[data-ui-theme] .studio .page-section .section-controls:focus-within{opacity:1}
+html[data-ui-theme] .studio .section-controls .section-add{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 16px;border:1px dashed var(--ui-line)!important;border-radius:999px;background:transparent!important;color:var(--ui-muted)!important;font-size:13px!important;font-weight:500;cursor:pointer}
+html[data-ui-theme] .studio .section-controls .section-add:hover{border-style:solid!important;border-color:var(--ui-accent)!important;color:var(--ui-accent)!important;background:var(--ui-raised)!important}
+html[data-ui-theme] .studio .section-menu{position:relative!important;background:transparent!important;padding:0!important}
+html[data-ui-theme] .studio .section-menu>summary{list-style:none;display:grid;place-items:center;width:34px;height:34px;border-radius:999px;color:var(--ui-muted);cursor:pointer;background:transparent}
+html[data-ui-theme] .studio .section-menu>summary::-webkit-details-marker{display:none}
+html[data-ui-theme] .studio .section-menu>summary:hover,html[data-ui-theme] .studio .section-menu[open]>summary{background:var(--ui-hover);color:var(--ui-ink)}
+html[data-ui-theme] .studio .section-menu-list{position:absolute;top:calc(100% + 6px);left:50%;transform:translateX(-50%);z-index:50;min-width:180px;display:flex;flex-direction:column;padding:6px;border:1px solid var(--ui-line);border-radius:12px;background:var(--ui-raised);box-shadow:var(--ui-shadow,0 12px 38px #2b241618)}
+html[data-ui-theme] .studio .section-menu-list button{display:flex!important;align-items:center;gap:10px;width:100%;min-height:36px!important;padding:0 12px!important;border:0!important;border-radius:8px!important;background:transparent!important;color:var(--ui-ink)!important;font-size:14px!important;text-align:left;cursor:pointer}
+html[data-ui-theme] .studio .section-menu-list button:hover:not(:disabled){background:var(--ui-hover)!important}
+html[data-ui-theme] .studio .section-menu-list .section-delete{color:#b3403a!important}
+html[data-ui-theme] .studio .section-menu-list .section-delete:hover:not(:disabled){background:#b3403a14!important}
+html[data-ui-theme] .studio .section-menu-list button:disabled{opacity:.4;cursor:default}
+/* Smart guides while dragging ornaments and pictures. */
+.snap-guides{position:fixed;inset:0;pointer-events:none;z-index:400}
+.snap-guide{position:fixed;background:#e0457b}
+.snap-guide-x{width:1px;transform:translateX(-.5px)}
+.snap-guide-y{height:1px;transform:translateY(-.5px)}
+.snap-guide span{position:absolute;padding:1px 6px;border-radius:999px;background:#e0457b;color:#fff;font:600 10.5px/16px system-ui,sans-serif;white-space:nowrap}
+.snap-guide-x span{top:-18px;left:4px}
+.snap-guide-y span{left:-2px;top:-18px}
+/* Space above the first line of a chapter/title page: adjustable in place. */
+.first-line-space.adjustable{position:relative;cursor:ns-resize;border-radius:6px;transition:background .15s}
+.first-line-space.adjustable:hover,.first-line-space.adjustable.dragging{background:repeating-linear-gradient(0deg,#2e5aac0d 0 1px,transparent 1px 12px);box-shadow:inset 0 -2px 0 #2e5aac55}
+.first-line-space-tag{position:absolute;left:50%;bottom:6px;transform:translateX(-50%);padding:2px 10px;border-radius:999px;background:#2e5aac;color:#fff;font:600 11px/18px system-ui,sans-serif;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .15s}
+.first-line-space.adjustable:hover .first-line-space-tag,.first-line-space.adjustable.dragging .first-line-space-tag{opacity:1}
+@media print{.first-line-space.adjustable{background:none!important;box-shadow:none!important}.first-line-space-tag{display:none}}
+.snap-gap{background:none;border-left:1px dashed #e0457b}
+.snap-gap::before,.snap-gap::after{content:"";position:absolute;left:-4px;width:7px;height:1px;background:#e0457b}
+.snap-gap::before{top:0}.snap-gap::after{bottom:0}
+/* "5 of 9" while scrolling: sticks to the bottom-right of the page area, takes no space. */
+.page-indicator{position:sticky;bottom:18px;z-index:30;display:block;clear:both;height:0;width:100%;overflow:visible;pointer-events:none}
+.page-indicator>span{position:absolute;right:0;bottom:0;padding:7px 14px;border-radius:999px;background:#2b2416e6;color:#fff;font:600 13px/1 system-ui,'Segoe UI',sans-serif;white-space:nowrap;box-shadow:0 4px 14px #0000002e;opacity:0;transform:translateY(4px);transition:opacity .25s,transform .25s}
+.page-indicator.show>span{opacity:1;transform:none}
+.page-indicator b{font-weight:700}
+/* Tab stops follow the book's indent size. */
+.paper .editor{tab-size:var(--indent-step,12.7mm)}
+.bd-indent{display:flex;align-items:center;width:44px;height:16px;border-left:2px solid currentColor;opacity:.8}
+.bd-indent i{display:block;flex:none;height:2px;border-top:2px dotted currentColor;opacity:.45}
+.bd-indent b{display:block;flex:1;height:2px;background:currentColor;opacity:.6}
+/* Manuscript import */
+/* Same paper size and shadow as the blank-book thumbnail so the row lines up. */
+.import-thumbnail{display:grid;place-items:center;align-content:center;gap:10px;box-sizing:border-box;width:126px;height:174px;border:1.5px dashed #c9bfa8;background:white;box-shadow:0 2px 5px #23334b18;color:var(--ui-accent,#2e5aac)}
+.import-thumbnail em{font-style:normal;font-size:11px;color:var(--ui-muted,#7a6e57)}
+.book-preset.preset-import:hover .import-thumbnail{border-color:var(--ui-accent,#2e5aac)}
+.tool-dialog.import-dialog{width:min(620px,94vw)}
+.import-drop{display:grid;justify-items:center;gap:8px;margin:6px 0 14px;padding:34px 20px;border:2px dashed var(--ui-line,#e5dcc7);border-radius:14px;background:var(--ui-surface,#fdfbf4);color:var(--ui-muted,#7a6e57);text-align:center;transition:border-color .15s,background .15s}
+.import-drop.over{border-color:var(--ui-accent,#2e5aac);background:var(--ui-tint,#f8edc8)}
+.import-drop strong{color:var(--ui-ink,#2b2416);font-size:16px}
+.import-drop span{font-size:13px}
+.import-drop .primary{margin-top:6px;padding:9px 18px!important;font-size:14px!important}
+.import-error{color:#a33;background:#b3403a12;border-radius:8px;padding:10px 12px;font-size:13px}
+.import-summary{display:grid;grid-template-columns:2fr 1fr;gap:12px;margin:4px 0 10px}
+.import-summary label{display:grid;gap:5px;font-size:13px;color:var(--ui-muted,#7a6e57)}
+.import-summary input{font:inherit;font-size:15px;padding:8px 10px;border:1px solid var(--ui-line,#e5dcc7);border-radius:8px;color:var(--ui-ink,#2b2416);background:var(--ui-field,#fff)}
+.import-count{margin:4px 0 8px;font-size:14px;color:var(--ui-ink,#2b2416)}
+.import-chapters{max-height:220px;overflow:auto;margin:0 0 10px;padding:6px 8px 6px 32px;border:1px solid var(--ui-line,#e5dcc7);border-radius:10px;background:var(--ui-raised,#fff);font-size:13px}
+.import-chapters li{padding:5px 0;border-bottom:1px solid #00000008}
+.import-chapters li:last-child{border:0}
+.import-chapters small{display:block;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--ui-muted,#7a6e57)}
+.import-chapters em{float:right;font-style:normal;font-size:12px;color:var(--ui-muted,#7a6e57)}
+.import-chapters .more{list-style:none;color:var(--ui-muted,#7a6e57)}
+.import-look-title{margin:14px 0 8px;font-size:14px}
+.import-looks{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.tool-dialog .import-looks button{display:grid;gap:3px;text-align:left;padding:10px 12px;border:2px solid var(--ui-line,#e5dcc7);border-radius:10px;background:var(--ui-raised,#fff)}
+.tool-dialog .import-looks button.on{border-color:var(--ui-accent,#2e5aac);background:var(--ui-tint,#f8edc8)}
+.import-looks strong{font-size:13px}
+.import-looks small{font-size:12px;line-height:1.35;color:var(--ui-muted,#7a6e57)}
+@media(max-width:600px){.import-looks{grid-template-columns:1fr 1fr}.import-summary{grid-template-columns:1fr}}
+/* Long books: the browser skips layout and painting for sheets that are off screen.
+   Sheets have a fixed size, so nothing shifts when they come into view. */
+.paper .pagination-page{content-visibility:auto}
+/* Preview & export with the print check */
+.tool-dialog.export-dialog{width:min(640px,94vw)}
+.export-step{margin:4px 0 8px;font-size:14px}
+.export-printers{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:14px}
+.tool-dialog .export-printers button{display:grid;gap:4px;align-content:start;text-align:left;padding:10px 12px;border:2px solid var(--ui-line,#e5dcc7);border-radius:10px;background:var(--ui-raised,#fff)}
+.tool-dialog .export-printers button.on{border-color:var(--ui-accent,#2e5aac);background:var(--ui-tint,#f8edc8)}
+.export-printers strong{font-size:13px}
+.export-printers small{font-size:12px;line-height:1.35;color:var(--ui-muted,#7a6e57)}
+.export-summary{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:12px;margin-bottom:10px}
+.export-summary strong{display:block;font-size:15px}
+.export-summary small{font-size:13px;color:var(--ui-muted,#7a6e57)}
+.export-summary.good{background:#2f8f5a14}.export-summary.meh{background:#e8a61c1f}.export-summary.bad{background:#b3403a14}
+.export-badge{display:grid;place-items:center;flex:none;width:30px;height:30px;border-radius:999px;color:#fff;font-weight:800}
+.good .export-badge{background:#2f8f5a}.meh .export-badge{background:#ad7406}.bad .export-badge{background:#b3403a}
+.export-issues{list-style:none;margin:0;padding:0;display:grid;gap:8px;max-height:44vh;overflow:auto}
+.export-issues li{display:flex;gap:10px;padding:10px 12px;border:1px solid var(--ui-line,#e5dcc7);border-radius:10px;background:var(--ui-raised,#fff)}
+.issue-icon{display:grid;place-items:center;flex:none;width:22px;height:22px;border-radius:999px;font-size:12px;font-weight:800;color:#fff;margin-top:1px}
+.issue-problem .issue-icon{background:#b3403a}.issue-warning .issue-icon{background:#ad7406}.issue-tip .issue-icon{background:#5b7fbf;font-style:italic;font-family:Georgia,serif}
+.export-issues strong{font-size:13px}
+.export-issues p{margin:3px 0 0;font-size:13px;line-height:1.5;color:var(--ui-muted,#7a6e57)}
+.issue-actions{display:flex;gap:6px;margin-top:8px}
+.tool-dialog .issue-actions button{padding:5px 10px;font-size:13px}
+.export-actions{flex-wrap:wrap}
+.bd-paper em{display:block;margin-top:3px;font-style:normal;font-size:12px;font-weight:600}
+.bd-paper .bd-ok{color:#2f8f5a}.bd-paper .bd-no{color:#a3742a;opacity:.8}
+.bd-note{background:var(--ui-tint,#f8edc8);border-radius:8px;padding:8px 10px}
+@media(max-width:600px){.export-printers{grid-template-columns:1fr}}
+/* Focus mode: only the page and a small bar. */
+html.books-focus .site-navigation,html.books-focus .studio.focus-mode>:is(.masthead,.format-row,.statusbar,.recovery,.cloud-notice),html.books-focus .studio.focus-mode :is(.outline,.page-tools,.section-controls,.canvas-note){display:none!important}
+html.books-focus .studio.focus-mode .document-scroller{background:var(--ui-workspace,#efece4)}
+html.books-dim .studio.focus-mode .document-scroller{background:#23211d}
+.focus-bar{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:300;display:flex;align-items:center;gap:6px;padding:6px 6px 6px 14px;border-radius:999px;background:#2b2416e8;color:#fff;font:500 13px system-ui,sans-serif;box-shadow:0 6px 24px #0003;opacity:.35;transition:opacity .2s}
+.focus-bar:hover,.focus-bar:focus-within{opacity:1}
+.focus-progress{display:inline-flex;align-items:center;gap:7px;margin-right:6px}
+.focus-bar button{border:0;border-radius:999px;padding:6px 12px;background:#ffffff1f;color:#fff;font:inherit;cursor:pointer}
+.focus-bar button:hover{background:#ffffff38}
+.goal-chip{position:relative;display:inline-flex}
+.goal-chip>button{display:inline-flex;align-items:center;gap:6px;border:0;background:transparent;font:inherit;font-size:13px;color:inherit;cursor:pointer;padding:2px 8px;border-radius:999px}
+.goal-chip>button:hover{background:var(--ui-hover,#f8f2e2)}
+.goal-streak{font-weight:600}
+.goal-pop{position:absolute;bottom:calc(100% + 8px);left:0;z-index:60;width:260px;padding:12px;border:1px solid var(--ui-line,#e5dcc7);border-radius:12px;background:var(--ui-raised,#fff);box-shadow:var(--ui-shadow,0 12px 38px #2b241618);font-size:13px}
+.goal-options{display:flex;gap:4px;margin:8px 0}
+.goal-options button{flex:1;padding:6px 0;border:1px solid var(--ui-line,#e5dcc7);border-radius:8px;background:var(--ui-surface,#fdfbf4);cursor:pointer;font:inherit;font-size:13px}
+.goal-options button[aria-pressed=true]{background:var(--ui-accent,#2e5aac);color:var(--ui-on-accent,#fff);border-color:transparent}
+.goal-pop p{margin:0;font-size:12px;line-height:1.45;color:var(--ui-muted,#7a6e57)}
+.goal-toast{position:fixed;right:20px;bottom:56px;z-index:320;display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;background:var(--ui-raised,#fff);border:1px solid var(--ui-line,#e5dcc7);box-shadow:0 12px 38px #2b241630;font-size:13px}
+.goal-toast strong{display:block}.goal-toast small{color:var(--ui-muted,#7a6e57)}
+.goal-toast button{border:0;background:transparent;font-size:18px;cursor:pointer}
+/* Centered dialogs were pinned to all four edges with height:auto, so they always
+   stretched to max height. Size them to their content (side sheets keep full height). */
+html .settings.tool-dialog:not(.side-sheet){height:fit-content}
+@media (max-width:1500px){html[data-ui-theme] .studio .format-row .long-label{display:none}html[data-ui-theme] .studio .format-row .style-button{text-transform:capitalize}}
+/* ===== Design round 1: editor ===== */
+/* Page list: accent-only selection, page numbers on the right, readable labels */
+html[data-ui-theme] .studio .outline>h2{font-size:12px;letter-spacing:.12em;margin:4px 0 10px}
+html[data-ui-theme] .studio .outline .chapter-row>button,html[data-ui-theme] .studio .outline .outline-page{display:flex!important;align-items:baseline;gap:8px;width:100%}
+html[data-ui-theme] .studio .outline .chapter-row>button>span,html[data-ui-theme] .studio .outline .outline-page>span{flex:1;min-width:0;text-align:left}
+.studio .outline .page-no{flex:none;font-size:12px;font-weight:400;color:var(--ui-subtle,#8a8070);font-variant-numeric:tabular-nums}
+html[data-ui-theme] .studio .outline .outline-page{font-size:13px;color:var(--ui-ink)}
+html[data-ui-theme] .studio .outline .outline-page.selected,html[data-ui-theme] .studio .outline .chapter-row.selected>button{background:var(--ui-tint)!important;color:var(--ui-accent-dark)!important;font-weight:600;border-color:transparent!important;border-radius:8px}
+html[data-ui-theme] .studio .outline .outline-page.selected:before{background:var(--ui-accent)!important}
+html[data-ui-theme] .studio .outline section.single-page{border-left:0;padding-left:0;margin-left:0}
+/* Right rail: one outline icon family, readable labels */
+html[data-ui-theme] .studio .tool-rail button{gap:4px}
+html[data-ui-theme] .studio .tool-rail button small{font-size:11px;line-height:1.2}
+html[data-ui-theme] .studio .tool-rail button svg{display:block;margin:0 auto}
+/* Status bar */
+html[data-ui-theme] .studio .statusbar{font-size:13px;color:var(--ui-subtle,#6b6358)}
+.goal-streak{display:inline-flex;align-items:center;gap:3px;color:#c2581b}
+.goal-chip>button{font-size:13px}
+/* Toolbar: no fill at rest; one flat style */
+html[data-ui-theme] .studio .format-row button.add-picture-action{background:transparent;color:var(--ui-accent-dark)}
+html[data-ui-theme] .studio .format-row button.add-picture-action:hover{background:var(--ui-hover);filter:none}
+html[data-ui-theme] .studio .format-row .style-button{border:0;border-radius:8px;padding:0 10px}
+/* Goal toast sits above the status bar on the left, never over the page */
+.goal-toast{left:16px;right:auto;bottom:44px;max-width:300px}
+.goal-toast small{display:block;font-size:12px}
+.goal-toast-icon{display:grid;place-items:center;width:30px;height:30px;border-radius:999px;background:#2f8f5a;color:#fff;flex:none}
+/* Book typography: hyphenate justified text so word gaps stay even */
+.paper .editor{hyphens:auto;-webkit-hyphens:auto}
+.pages{padding-top:24px}
+/* Tablet: the toolbar stays one row (scrolls sideways) and the page list starts closed */
+@media (max-width:1100px){
+ html[data-ui-theme] .studio .format-row{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;border-radius:16px}
+ html[data-ui-theme] .studio .format-row::-webkit-scrollbar{display:none}
+ html[data-ui-theme] .studio .format-row>*{flex:none}
+ html[data-ui-theme] .studio .format-row details.find{margin-left:0!important}
+ html[data-ui-theme] .studio .masthead .save{display:none}
+}
+/* ===== Global: helper text contrast ===== */
+html[data-ui-theme='light']{--ui-muted:#6b6358}
+/* ===== Design round 1: library ===== */
+/* One container edge shared with the site header (padding 0 4.5%), one 6-column grid for templates and books */
+.library-home main{max-width:none!important;padding:0 4.5%}
+.library-home .start-section,.library-home .saved-section{padding:32px 0!important;background:transparent}
+.library-home .saved-section{border-top:1px solid var(--ui-line)}
+.library-home .start-section{border-bottom:0}
+.library-home .library-section-heading{margin-bottom:20px}
+.library-home .book-presets,.library-home .saved-books{display:grid;grid-template-columns:repeat(6,minmax(0,1fr))!important;gap:18px!important;align-items:start}
+@media(max-width:1099px){.library-home .book-presets,.library-home .saved-books{grid-template-columns:repeat(3,minmax(0,1fr))!important}}
+@media(max-width:600px){.library-home .book-presets,.library-home .saved-books{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+/* Every mat is the same warm neutral and the same height */
+.library-home .preset-stage,.library-home .saved-book-preview,.library-home .preset-journal .preset-stage,.library-home .preset-poetry .preset-stage,.library-home .preset-novel .preset-stage{background:var(--ui-paper-stage,#efe9dd)!important;border:1px solid #e4dccb!important;border-radius:6px;height:211px!important;box-sizing:border-box;display:flex;align-items:center;justify-content:center;padding:16px}
+/* Book cards look like template cards: mat, then title and details underneath */
+.library-home .saved-book{display:flex!important;flex-direction:column;width:100%;border:0!important;background:transparent!important;box-shadow:none!important;border-radius:0;overflow:visible;text-align:left;padding:0}
+.library-home .saved-book-meta{padding:14px 0 0;gap:6px}
+.library-home .saved-book-meta strong{font-family:var(--ui-font);font-size:14px;font-weight:600;color:var(--ui-ink,#4d414f)}
+.library-home .saved-book-meta small{font-size:12px}
+.library-home .book-preset>strong{margin:14px 0 6px}
+.library-home .book-preset>small,.library-home .saved-book-meta small{font-size:12px;line-height:1.5}
+/* Hover: both kinds of card lift the same way */
+.library-home .book-preset .preset-stage,.library-home .saved-book-preview{transition:transform .15s,box-shadow .15s}
+.library-home .book-preset:hover .preset-stage,.library-home .saved-book:hover .saved-book-preview,.library-home .saved-book:focus-visible .saved-book-preview{transform:translateY(-2px);box-shadow:0 6px 16px #2b241614;outline:0}
+.library-home .saved-book-delete{top:10px;right:10px}
+/* "Your books" row: heading, count and search on one line */
+.library-home .saved-section .library-section-heading{align-items:center}
+.books-title{display:flex;align-items:baseline;gap:12px}
+.books-title span{font-size:13px;color:var(--ui-muted)}
+.library-home .library-section-heading h2{font-size:26px;margin:0}
+.library-home .start-section .library-section-heading{gap:6px}
+.library-home .library-section-heading h1{margin:0}
+.import-thumbnail em{text-align:center;line-height:1.4}
+/* ===== Design round 1: import ===== */
+.step-cue{display:block;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--ui-muted);margin-bottom:2px}
+.import-drop .import-icon{color:var(--ui-accent,#2e5aac)}
+.import-chapters{list-style:none;padding:4px 16px!important}
+.import-chapters li{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:8px 0!important}
+.import-chapters li>div{min-width:0}
+.import-chapters small{font-variant:small-caps;text-transform:none!important;letter-spacing:.06em!important;font-size:12px!important}
+.import-chapters em{float:none!important;flex:none;font-variant-numeric:tabular-nums}
+.import-looks{grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:8px!important}
+.tool-dialog .import-looks button{position:relative;display:flex!important;flex-direction:column;align-items:center;gap:8px!important;padding:10px 6px 10px!important;text-align:center!important;min-height:132px}
+.look-stage{display:flex;align-items:center;justify-content:center;height:84px}
+.look-blank{display:block;width:54px;height:80px;background:#fff;box-shadow:0 1px 4px #2b241622}
+.import-looks strong{font-size:13px!important;line-height:1.3}
+.look-check{position:absolute;top:6px;right:6px;display:grid;place-items:center;width:18px;height:18px;border-radius:999px;background:var(--ui-accent,#2e5aac);color:var(--ui-on-accent,#fff);font-size:11px;font-weight:700}
+.tool-dialog .import-looks button.on{background:#fff!important;border-color:var(--ui-accent,#2e5aac)!important}
+@media(max-width:600px){.import-looks{grid-template-columns:repeat(3,minmax(0,1fr))!important}}
+/* ===== Global: one dialog header ===== */
+html .tool-dialog .panel-heading h2{font-family:var(--ui-serif);font-size:20px;font-weight:400}
+html .tool-dialog .panel-heading>button,html .tool-content .tool-panel-heading>button{display:grid;place-items:center;width:36px;height:36px;padding:0!important;border:0!important;border-radius:999px!important;background:transparent!important;font-size:22px!important;line-height:1;color:var(--ui-ink)}
+html .tool-dialog .panel-heading>button:hover,html .tool-content .tool-panel-heading>button:hover{background:var(--ui-hover)!important}
+/* ===== Design round 1: panels ===== */
+/* Docked side sheet: below the toolbar, flush right, the page recentres beside it */
+html .settings.tool-dialog.side-sheet{position:fixed!important;inset:var(--workspace-top,190px) 0 0 auto!important;margin:0!important;width:min(440px,100vw)!important;height:auto!important;max-height:none!important;border-radius:0!important;border:0!important;border-left:1px solid var(--ui-line)!important;box-shadow:-8px 0 24px #2b24160f!important;z-index:40}
+html.books-sheet-open .studio .workspace{padding-right:min(440px,100vw);box-sizing:border-box}
+@media(max-width:900px){html.books-sheet-open .studio .workspace{padding-right:0}html .settings.tool-dialog.side-sheet{box-shadow:-8px 0 40px #2b241640!important}}
+/* Tabs: one segmented control */
+html .book-design .bd-tabs{gap:0;padding:4px;margin:12px 0 10px;border:0;border-radius:999px;background:var(--ui-well,#efe9dd)}
+html .book-design .bd-tabs button{height:32px;padding:0 8px;border:0!important;border-radius:999px;background:transparent!important;color:var(--ui-ink)!important;font-size:13px;font-weight:600;box-shadow:none!important}
+html .book-design .bd-tabs button[aria-selected=true]{background:var(--ui-raised,#fff)!important;color:var(--ui-accent-dark)!important;box-shadow:0 1px 3px #2b24161f!important}
+/* Footer: one line, and the last section scrolls clear of it */
+html .book-design .bd-footer{padding:10px 0;font-size:12px;min-height:0}
+html .book-design .bd-scroll{padding-bottom:40px;mask-image:linear-gradient(to bottom,#000 calc(100% - 24px),transparent)}
+/* Choice cards: 4-column grid rows and full-width list rows */
+html .book-design .bd-choices{gap:8px}
+html .book-design .bd-choices>button{position:relative}
+html .book-design .bd-choices.bd-list{display:flex;flex-direction:column;gap:6px}
+html .book-design .bd-choices.bd-list>button{display:flex!important;flex-direction:row!important;align-items:center;gap:12px;justify-content:flex-start;text-align:left;padding:10px 36px 10px 12px!important;min-height:48px}
+.bd-choice-text{display:flex;flex-direction:column;gap:2px}
+.bd-choice-text small{font-size:12px;font-weight:400;color:var(--ui-muted);line-height:1.35}
+.bd-check-badge{position:absolute;top:6px;right:6px;display:grid;place-items:center;width:16px;height:16px;border-radius:999px;background:var(--ui-accent);color:var(--ui-on-accent,#fff);font-size:10px;font-weight:700}
+.bd-list .bd-check-badge{top:50%;right:12px;transform:translateY(-50%);width:18px;height:18px}
+html .book-design .bd-choices>button[aria-pressed=true]{border:2px solid var(--ui-accent)!important;background:var(--ui-tint)!important}
+html .book-design .bd-label{font-size:13px}
+html .book-design .bd-help{font-size:12px;color:var(--ui-subtle,#6b6358)}
+/* Little page pictures for margins and "start lower" */
+.bd-mini-page{position:relative;display:block;width:30px;height:40px;background:#fff;border:1px solid #c9bfa8;box-shadow:1px 1px 0 #0000000d}
+.bd-mini-text{position:absolute;display:flex;flex-direction:column;gap:3px}
+.bd-mini-text i{display:block;height:2px;background:#8a8070;border-radius:1px}
+.bd-mini-text i:last-child{width:60%}
+/* Book sizes drawn to scale, big enough to compare */
+html .book-design .bd-paper-shape{width:56px;height:70px}
+html .book-design .bd-paper button{position:relative;padding:10px 4px 8px}
+.bd-popular{position:absolute;top:-8px;left:50%;transform:translateX(-50%);padding:1px 7px;border-radius:999px;background:var(--ui-accent);color:var(--ui-on-accent,#fff);font-size:12px;font-weight:600;white-space:nowrap}
+html .book-design .bd-paper strong{font-size:12px}
+html .book-design .bd-paper small{font-size:11px}
+/* Export: summary and issue rows share one inset and icon size */
+.export-summary{padding:12px 14px}
+.export-issues li{padding:12px 14px}
+.export-badge,.issue-icon{width:24px!important;height:24px!important;font-size:13px}
+.export-summary{gap:12px}.export-issues li{gap:12px}
+.export-actions .export-preview{margin-right:auto}
+/* Page types picker: one selection style, readable captions */
+.page-gallery button[aria-pressed=true]{background:var(--ui-surface)!important;box-shadow:none!important;border:2px solid var(--ui-accent)!important}
+.page-gallery .page-type-cards button,.page-gallery .page-style-cards button{font-size:13px}
+.page-gallery>footer small,.page-gallery>footer p{font-size:13px}
+html[data-ui-theme] .studio .format-row :is(select,button,details){flex-shrink:0}
+html .book-design .bd-paper{row-gap:16px;padding-top:8px}
+
+/* Appearance inside the editor (the site header is hidden there): an icon button beside Send feedback. */
+html[data-ui-theme] .studio .masthead .masthead-theme{flex:none;width:42px;height:42px;min-height:42px;min-width:42px;padding:0;gap:0;border:1px solid var(--ui-line);border-radius:999px;background:var(--ui-surface);color:var(--ui-ink);box-shadow:none}
+html[data-ui-theme] .studio .masthead .masthead-theme:hover{background:var(--ui-hover)}
+html[data-ui-theme] .studio .masthead .masthead-theme .ui-theme-label{display:none}
+html[data-ui-theme] .studio .masthead .masthead-theme :is(.ui-theme-sun,.ui-theme-moon){font-size:19px}

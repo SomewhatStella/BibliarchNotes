@@ -1,0 +1,43 @@
+/*
+ * Dark mode for screens styled before the theme tokens existed. Book pages, covers and
+ * thumbnails stay paper-white on purpose (they show what will print); everything around
+ * them follows the dark palette.
+ */
+html[data-ui-theme=dark] .library-home .saved-book{background:var(--ui-raised);border-color:var(--ui-line)}
+html[data-ui-theme=dark] .library-home .saved-book-meta small,
+html[data-ui-theme=dark] .library-home .book-preset>small,
+html[data-ui-theme=dark] .library-home .library-section-heading p,
+html[data-ui-theme=dark] .library-empty p,
+html[data-ui-theme=dark] .library-footer{color:var(--ui-subtle)}
+html[data-ui-theme=dark] .library-home .library-section-heading input{background:var(--ui-field);color:var(--ui-ink);border-color:var(--ui-line)}
+html[data-ui-theme=dark] .library-home .preset-stage,html[data-ui-theme=dark] .library-home .saved-book-preview{border-color:var(--ui-line)}
+html[data-ui-theme=dark] .library-drop-hint{background:color-mix(in srgb,var(--ui-surface) 92%,transparent);color:var(--ui-ink)}
+
+/* Page types gallery */
+html[data-ui-theme=dark] .page-gallery{background:var(--ui-surface);color:var(--ui-ink);border-color:var(--ui-line)}
+html[data-ui-theme=dark] .page-gallery>header,html[data-ui-theme=dark] .page-gallery>footer{background:var(--ui-surface);border-color:var(--ui-line)}
+html[data-ui-theme=dark] .page-gallery p,html[data-ui-theme=dark] .page-gallery small,html[data-ui-theme=dark] .page-gallery>footer small,html[data-ui-theme=dark] .gallery-preview p{color:var(--ui-subtle)}
+html[data-ui-theme=dark] .page-gallery p strong{color:var(--ui-ink)}
+html[data-ui-theme=dark] .page-gallery button{background:var(--ui-raised);color:var(--ui-ink);border-color:var(--ui-line)}
+html[data-ui-theme=dark] .page-gallery button:hover{border-color:var(--ui-accent)}
+html[data-ui-theme=dark] .page-gallery button[aria-pressed=true]{background:var(--ui-tint);border-color:var(--ui-accent);box-shadow:0 0 0 1px var(--ui-accent)}
+html[data-ui-theme=dark] .page-gallery .gallery-primary{background:var(--ui-accent);color:var(--ui-on-accent);border-color:var(--ui-accent)}
+html[data-ui-theme=dark] .page-gallery>footer [role=status]{color:#8fd3a8}
+html[data-ui-theme=dark] .gallery-preview{background:var(--ui-workspace)}
+
+/* Side panels and hints */
+html[data-ui-theme=dark] .decal-tray>p,html[data-ui-theme=dark] .tool-hint,html[data-ui-theme=dark] .muted{color:var(--ui-subtle)}
+html[data-ui-theme=dark] .studio .outline .selected .page-no,html[data-ui-theme=dark] .studio .outline [aria-current=page] .page-no{color:var(--ui-ink)}
+
+/* Floating pills sit on the dark workspace: give them an edge. */
+html[data-ui-theme=dark] .page-indicator>span{background:#0d131ee6;box-shadow:0 0 0 1px var(--ui-line)}
+
+/* Notices and errors */
+html[data-ui-theme=dark] .bd-error,html[data-ui-theme=dark] .error[role=alert]{color:#f2a7b0}
+
+/* Ornaments are ink drawn for paper: preview them on a paper tile. */
+html[data-ui-theme=dark] .decal-tray>button img{background:#f6f1e4;border-radius:8px;padding:6px;box-sizing:border-box}
+
+/* Dark covers would melt into the dark interface: give previews a faint edge. */
+html[data-ui-theme=dark] .cover-window{box-shadow:0 0 0 1px #ffffff2e,0 10px 34px #0008}
+html[data-ui-theme=dark] .cover-styles .cover-view,html[data-ui-theme=dark] .outline-cover .cover-view,html[data-ui-theme=dark] .export-cover .cover-view{box-shadow:0 0 0 1px #ffffff2e}

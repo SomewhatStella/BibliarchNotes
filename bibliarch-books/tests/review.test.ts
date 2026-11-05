@@ -1,0 +1,6 @@
+import {it,expect} from 'vitest';
+import {seed,emptyDoc,parseLibrary} from '../src/model';
+import {editTracked,resolveTracked,documentText} from '../src/review';
+it('tracks original rich content across multiple edits, persists, and rejects losslessly',()=>{const l=seed(),s=l.books[0].chapters[1].scenes[0],original=structuredClone(s.content);const edited=editTracked(editTracked(s,emptyDoc(['first']),true),emptyDoc(['second']),true);expect(edited.suggestion?.before).toEqual(original);l.books[0].chapters[1].scenes[0]=edited;const restored=parseLibrary(JSON.stringify(l)).books[0].chapters[1].scenes[0];expect(resolveTracked(restored,false).content).toEqual(original);expect(resolveTracked(restored,true).suggestion).toBeUndefined();expect(documentText(resolveTracked(restored,true).content)).toBe('second');});
+it('normal edits do not create suggestions and selection-only updates do not create suggestions',()=>{const s=seed().books[0].chapters[1].scenes[0];expect(editTracked(s,structuredClone(s.content),true).suggestion).toBeUndefined();expect(editTracked(s,emptyDoc(['changed']),false).suggestion).toBeUndefined();});
+it('rejects invalid review metadata without breaking valid old backups',()=>{const l=seed();(l.books[0].chapters[1].scenes[0] as any).suggestion={before:{invalid:true}};expect(()=>parseLibrary(JSON.stringify(l))).toThrow();});

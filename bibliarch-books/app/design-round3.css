@@ -1,0 +1,126 @@
+/* ===== Design review round 3 fixes (judged against docs/design-rubric.md) ===== */
+/* B8.2: better line breaking for book text (hyphenation is already on) */
+.paper .editor p{text-wrap:pretty}
+/* B9.4 / G1: Page types captions at 13px; thumbnails draw grey bars instead of micro-text */
+.page-gallery .page-type-cards button>strong,.page-gallery .page-style-cards button>strong,.page-gallery .page-type-cards button>span:not(.page-thumbnail),.page-gallery .page-style-cards button>span:not(.page-thumbnail){font-size:13px!important}
+:is(.page-gallery,.book-design,.theme-options) .page-thumbnail :is(strong,small){display:block;color:transparent!important;font-size:0!important;height:5px;width:62%;margin:4px auto 6px;border-radius:2px;background:#8a8070;overflow:hidden}
+:is(.page-gallery,.book-design,.theme-options) .page-thumbnail small{height:3px;width:38%;background:#b3aa98}
+:is(.page-gallery,.book-design,.theme-options) .page-thumbnail .thumb-contents{color:transparent!important;font-size:0!important}
+/* G7: streak icon matches the outline icon family */
+.goal-streak svg{fill:none;stroke:currentColor;stroke-width:2}
+.goal-streak{color:var(--ui-ink)}
+/* C8.2 / G3: one 4-column grid with 8px gaps throughout the design panel */
+html .book-design .bd-types{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:8px!important}
+html .book-design .bd-paper{gap:8px!important}
+html .book-design .bd-fonts{gap:8px!important}
+html .book-design .bd-types>button span{font-size:12px}
+/* G3: same side padding in both docked panels */
+html .settings.tool-dialog.side-sheet{padding:0 20px!important}
+html .studio .tool-content{padding-left:20px!important;padding-right:20px!important;box-sizing:border-box}
+/* C9.1: sizes drawn larger and truly to scale; readable badge */
+html .book-design .bd-paper-shape{width:72px;height:96px}
+.bd-popular{font-size:11px!important}
+/* G4: the selected printer gets the full selection style */
+.printer-choice>button.on{border:2px solid var(--ui-accent)!important;background:var(--ui-tint)!important}
+/* C9.4: ornament art fills tiles of one fixed height */
+.decal-tray>button{aspect-ratio:auto!important;height:116px!important}
+.decal-tray>button img{width:92%!important;height:62px!important;max-height:none!important;object-fit:contain}
+/* Docked panels stop above the status bar so page and word counts stay visible */
+html .settings.tool-dialog.side-sheet{bottom:30px!important}
+/* A10.1: drop a manuscript anywhere on the library */
+.library-home{position:relative}
+.library-drop-hint{position:fixed;inset:12px;z-index:200;display:grid;place-content:center;gap:6px;text-align:center;border:3px dashed var(--ui-accent);border-radius:18px;background:#fdfbf4e6;pointer-events:none}
+.library-drop-hint strong{font:400 26px var(--ui-serif);color:var(--ui-ink)}
+.library-drop-hint span{font-size:13px;color:var(--ui-subtle,#6b6358)}
+/* A10.2: empty and no-results states */
+.library-home .library-empty{display:grid;place-items:center;gap:6px;padding:40px 16px;border:1px dashed #d8cfbd;border-radius:10px;background:transparent!important;text-align:center}
+.library-home .library-empty h3{margin:0;font:400 20px var(--ui-serif);color:var(--ui-ink)}
+.library-home .library-empty p{margin:0;font-size:13px;color:var(--ui-subtle,#6b6358)}
+/* ===== Round 4 ===== */
+/* B8.2: hyphenate a little more readily; a paragraph split across sheets keeps a full last line */
+.paper .editor{hyphenate-limit-chars:6 3 2}
+.paper .editor p[data-continues]{text-align-last:var(--paragraph-align,start)}
+/* B9.3: focus bar lives in the gutter beside the page, never over text */
+.focus-bar{left:auto!important;right:24px;bottom:24px!important;transform:none!important}
+/* C9.4: ornament art in a fixed box, captions on one baseline */
+.decal-tray>button{justify-content:space-between!important;padding:12px 8px 10px!important}
+.decal-tray>button img{width:100%!important;height:70px!important;flex:none}
+/* G2: section head size in Preview & export matches the panels */
+.export-step{font-size:15px!important}
+/* B10.3: on tablets the page list opens as a drawer over the pages instead of squeezing them */
+@media (max-width:1100px){
+ html[data-ui-theme] .studio .workspace>.outline{position:absolute;left:0;top:0;bottom:0;z-index:30;width:260px;box-shadow:12px 0 32px #2b241626}
+}
+/* A9.1 / A9.4 at phone width: one 16px edge for header and content; heading row stays left-aligned */
+@media (max-width:600px){
+ .library-home main{padding:0 16px!important}
+ .site-navigation{padding:0 16px!important}
+ .library-home .library-section-heading{flex-direction:column!important;align-items:stretch!important;gap:12px}
+ .library-home .library-section-heading>div{text-align:left!important;justify-content:flex-start}
+ .library-home .library-section-heading input{width:100%!important;max-width:none!important}
+}
+/* ===== Round 5 ===== */
+/* C8.6: card titles wrap instead of being cut off */
+html .book-design .bd-fonts strong,html .book-design .bd-fonts small{white-space:normal!important;overflow:visible!important;text-overflow:clip!important}
+/* C9.1: "Most popular" is a strip across the top of its card, clear of the check badge */
+.bd-popular{top:0!important;left:0!important;right:0!important;transform:none!important;border-radius:6px 6px 0 0!important;padding:2px 0!important;text-align:center;font-size:12px!important}
+html .book-design .bd-paper>button[aria-pressed=true] .bd-check-badge{top:24px}
+html .book-design .bd-paper>button{padding-top:26px!important;overflow:hidden}
+/* G1/G2: readable size labels and tabs */
+html .book-design .bd-paper small{font-size:12px!important}
+html .book-design .bd-tabs button{font-size:13px!important}
+/* C9.4: ornament art bigger and darker inside its tile; labels clear of the bottom edge */
+.decal-tray>button{padding:10px 8px 12px!important}
+.decal-tray>button img{transform:scale(1.3);filter:brightness(.55) contrast(1.5)}
+/* B8.4: single-page chapters are one row; a differently named page shows as a subtitle */
+.studio .outline .row-sub{display:block;font-size:12px;font-weight:400;color:var(--ui-subtle,#6b6358);margin-top:1px}
+/* tablet More menu: room for the indent buttons on one row */
+@media (max-width:1100px){.advanced-formatting{min-width:380px!important}}
+.decal-tray>button{height:132px!important;padding:10px 8px 14px!important;overflow:hidden}
+.decal-tray>button img{transform:scale(1.12)!important;width:88%!important;height:64px!important}
+.decal-tray>button span{line-height:1.3}
+/* C10.2: font cards preview the book's own words */
+.bd-font-sample{display:block;font-size:15px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;color:var(--ui-ink)}
+html .book-design .bd-fonts>button{display:flex!important;flex-direction:column;align-items:flex-start;gap:2px;text-align:left}
+/* C9.4: ornament art drawn solid and larger; less empty space above the caption */
+.decal-tray>button{height:116px!important;padding:8px 6px 12px!important}
+.decal-tray>button img{transform:scale(1.18)!important;width:86%!important;height:58px!important;filter:brightness(0) opacity(.78)!important}
+/* End ornament: only on the last sheet of a section */
+.paper section.pagination-page:not(:last-of-type) .scene-divider{display:none!important}
+/* B10.4: the tablet "More" menu stays on screen */
+@media (max-width:1100px){html .studio .toolbar .popover.advanced-formatting{left:auto!important;right:8px!important;max-width:calc(100vw - 16px);min-width:0!important;width:380px}}
+.advanced-formatting .color-pick input[type=color]{width:28px!important;height:28px!important;padding:0;border-radius:6px}
+.advanced-formatting{gap:6px!important}
+.advanced-formatting>button{padding:0 8px!important}
+/* G2: status bar on the 12px helper size */
+html[data-ui-theme] .studio .statusbar,.goal-chip>button{font-size:12px!important}
+/* ===== Round 8: type scale (20 titles / 15 section heads / 13 labels / 12 helper) ===== */
+.library-home .book-preset>strong,.library-home .saved-book-meta strong{font-size:15px!important}
+.import-count{font-size:13px!important}
+.import-chapters span{font-size:13px}
+.import-looks strong{font-size:13px!important}
+html .tool-dialog .panel-heading h2{font-size:20px!important}
+.import-thumbnail em{font-size:12px!important;color:var(--ui-subtle,#6b6358)!important}
+.import-drop strong{font-size:15px!important}
+.import-drop .primary{font-size:13px!important}
+.import-look-title{font-size:15px!important}
+html[data-ui-theme] .studio .tool-rail button small{font-size:12px!important}
+.library-home .library-section-heading h2{font-size:24px!important}
+.library-drop-hint strong{font-size:24px!important}
+.snap-guide span,.first-line-space-tag{font-size:12px!important;line-height:18px!important}
+.bd-popular{font-size:12px!important}
+/* G2: toolbar and header labels on the 13px label size */
+html[data-ui-theme] .studio .format-row :is(button,summary,select){font-size:13px!important}
+html[data-ui-theme] .studio .masthead .home-button{font-size:13px!important}
+.library-footer summary{font-size:13px}
+/* G1 / G4: Text box panel — readable choices, one selection style, no purple */
+.overlay-background-choices button{font-size:12px!important}
+.studio .page-tools button[aria-pressed=true],.overlay-background-choices button[aria-pressed=true]{outline:0!important;border:2px solid var(--ui-accent)!important;background:var(--ui-tint)!important}
+html[data-ui-theme] .studio .tool-rail button:hover{background:var(--ui-hover)!important}
+html[data-ui-theme] .studio .outline .chapter-row>button,html[data-ui-theme] .studio .outline .chapter-row summary{font-size:13px!important}
+html[data-ui-theme] .studio .tool-rail button[aria-selected=true]{background:var(--ui-tint)!important;color:var(--ui-accent-dark)!important}
+html[data-ui-theme] .studio .section-menu-list button{font-size:13px!important}
+/* B8.2: a paragraph piece that continues on the next page keeps its natural line breaks
+   (no "pretty" rebalancing, which would leave a short last line to be stretched). */
+.paper .editor p[data-continues]{text-wrap:wrap}
+.paper .editor{hyphenate-limit-chars:5 2 2}

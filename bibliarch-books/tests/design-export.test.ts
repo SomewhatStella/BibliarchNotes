@@ -1,0 +1,11 @@
+import {it,expect} from 'vitest';
+import {readFileSync} from 'node:fs';
+import {buildEpub,buildPrintHtml} from '../src/publishing';
+import {POST} from '../app/api/pdf/route';
+import JSZip from 'jszip';
+import {PDFDocument} from 'pdf-lib';
+const bytes=readFileSync(new URL('./fixtures/Abel-Regular.ttf',import.meta.url));
+const font={id:'font-abel',family:'Bibliarch-font-abel',mime:'font/ttf',data:'data:font/ttf;base64,'+bytes.toString('base64'),license:readFileSync(new URL('./fixtures/Abel-OFL.txt',import.meta.url),'utf8')};
+const book:any={title:'Embedded type',customFonts:[font],format:{widthMm:148,heightMm:210,marginMm:15,bodyFont:font.family,headingFont:font.family},sections:[{id:'s',title:'Embedded Abel',kind:'scene',content:{root:{type:'root',children:[{type:'paragraph',children:[{type:'text',text:'The quick brown fox jumps over the lazy dog.'}]}]}},decals:[{id:'stars',src:'builtin:stars',alt:'',x:10,y:10,width:20,rotation:0,opacity:.3}]}]};
+it('embeds original licensed font bytes and stylesheet in a real EPUB',async()=>{const zip=await JSZip.loadAsync(await buildEpub(book));expect(Buffer.from(await zip.file('OEBPS/fonts/font-abel.ttf')!.async('uint8array'))).toEqual(bytes);expect(await zip.file('OEBPS/style.css')!.async('text')).toContain('fonts/font-abel.ttf');expect(await zip.file('OEBPS/font-licenses.txt')!.async('text')).toContain('SIL OPEN FONT LICENSE');});
+it('embeds Abel in a genuine Chromium PDF with no remote access',async()=>{const result=await POST(new Request('http://localhost/api/pdf',{method:'POST',body:JSON.stringify(book)}));expect(result.status).toBe(200);const bytes=Buffer.from(await result.arrayBuffer());expect(bytes.toString('latin1')).toMatch(/Abel/);expect(bytes.toString('latin1')).toMatch(/\/FontFile[23]/);expect((await PDFDocument.load(bytes)).getPageCount()).toBeGreaterThan(0);expect(buildPrintHtml(book)).not.toContain('https://');},30000);

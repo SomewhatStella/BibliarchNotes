@@ -1,0 +1,136 @@
+{
+  "repository": "https://github.com/tabler/tabler-icons",
+  "revision": "cade2ac67f6c09f96363f096410172ebd1cc9eb3",
+  "tag": "v3.31.0",
+  "licenseSource": "https://raw.githubusercontent.com/tabler/tabler-icons/cade2ac67f6c09f96363f096410172ebd1cc9eb3/LICENSE",
+  "assets": [
+    {
+      "id": "tabler-leaf",
+      "name": "Leaf",
+      "category": "Botanical",
+      "source": "https://raw.githubusercontent.com/tabler/tabler-icons/cade2ac67f6c09f96363f096410172ebd1cc9eb3/icons/outline/leaf.svg",
+      "sha256": "240d4b6a06d72280121534580452647cc1fa071469aa1c5e80d1399cab606697",
+      "license": "MIT"
+    },
+    {
+      "id": "tabler-plant-2",
+      "name": "Plant 2",
+      "category": "Botanical",
+      "source": "https://raw.githubusercontent.com/tabler/tabler-icons/cade2ac67f6c09f96363f096410172ebd1cc9eb3/icons/outline/plant-2.svg",
+      "sha256": "29eae909b201bfd47859e379a9ff72a379d4d191193af6251f47528f41fc9283",
+      "license": "MIT"
+    },
+    {
+      "id": "tabler-flower",
+      "name": "Flower",
+      "category": "Botanical",
+      "source": "https://raw.githubusercontent.com/tabler/tabler-icons/cade2ac67f6c09f96363f096410172ebd1cc9eb3/icons/outline/flower.svg",
+      "sha256": "2010314843bcc8c27be2a2a902760455a6c16ea7a84fce2e81ecf0ea287ae81c",
+      "license": "MIT"
+    },
+    {
+      "id": "tabler-seedling",
+      "name": "Seedling",
+      "category": "Botanical",
+      "source": "https://raw.githubusercontent.com/tabler/tabler-icons/cade2ac67f6c09f96363f096410172ebd1cc9eb3/icons/outline/seedling.svg",
+      "sha256": "58c9f9ee0968a6b0114241c426326cb8885e12ccd95281793a5cecbd319f6274",
+      "license": "MIT"
+    },
+    {
+      "id": "tabler-moon",
+      "name": "Moon",
+      "category": "Celestial",
+      "source": "https://raw.githubusercontent.com/tabler/tabler-icons/cade2ac67f6c09f96363f096410172ebd1cc9eb3/icons/outline/moon.svg",
+      "sha256": "a0ae8e9b875db0f914d5d7702afaf87b1ae78fcc09acc1ae4dca63c930e49b43",
+      "license": "MIT"
+    },
+    {
+      "id": "tabler-stars",
+      "name": "Stars",
+      "category": "Celestial",
+      "source": "https://raw.githubusercontent.com/tabler/tabler-icons/cade2ac67f6c09f96363f096410172ebd1cc9eb3/icons/outline/stars.svg",
+      "sha256": "0e5283ef7c70bff02335e95173a61fd6ef614c13bc5079a9fe5fa027b91494f8",
+      "license": "MIT"
+    },
+    {
+      "id": "tabler-sparkles",
+      "name": "Sparkles",
+      "category": "Celestial",
+      "source": "https://raw.githubusercontent.com/tabler/tabler-icons/cade2ac67f6c09f96363f096410172ebd1cc9eb3/icons/outline/sparkles.svg",
+      "sha256": "ee4f1a0b730b29fd4db3588e5c5a768d973ad09ac8c79a6d062eadd9570d4dc3",
+      "license": "MIT"
+    },
+    {
+      "id": "tabler-sun",
+      "name": "Sun",
+      "category": "Celestial",
+      "source": "https://raw.githubusercontent.com/tabler/tabler-icons/cade2ac67f6c09f96363f096410172ebd1cc9eb3/icons/outline/sun.svg",
+      "sha256": "6eaf26aaf098f0acd1e7f5c3ea616f14c55576577e83f5f53a97990f25183272",
+      "license": "MIT"
+    },
+    {
+      "id": "tabler-snowflake",
+      "name": "Snowflake",
+      "category": "Winter",
+      "source": "https://raw.githubusercontent.com/tabler/tabler-icons/cade2ac67f6c09f96363f096410172ebd1cc9eb3/icons/outline/snowflake.svg",
+      "sha256": "6811875d56ebd37c7ad5ece934819dce845244904b25349bd70002394f7d8290",
+      "license": "MIT"
+    },
+    {
+      "id": "tabler-christmas-tree",
+      "name": "Christmas Tree",
+      "category": "Winter",
+      "source": "https://raw.githubusercontent.com/tabler/tabler-icons/cade2ac67f6c09f96363f096410172ebd1cc9eb3/icons/outline/christmas-tree.svg",
+      "sha256": "d831d844dd53130516a427d617410143aea54bd518a2ec0bfffc177658286aab",
+      "license": "MIT"
+    },
+    {
+      "id": "tabler-snowman",
+      "name": "Snowman",
+      "category": "Winter",
+      "source": "https://raw.githubusercontent.com/tabler/tabler-icons/cade2ac67f6c09f96363f096410172ebd1cc9eb3/icons/outline/snowman.svg",
+      "sha256": "04ac55a877c2ff969b51c6af62e7bec4c2db33d97931ee5e19302c9dfd47e485",
+      "license": "MIT"
+    },
+    {
+      "id": "tabler-mist",
+      "name": "Mist",
+      "category": "Winter",
+      "source": "https://raw.githubusercontent.com/tabler/tabler-icons/cade2ac67f6c09f96363f096410172ebd1cc9eb3/icons/outline/mist.svg",
+      "sha256": "fe517153eb68649f9e71ed867ec515e7b897b6b5321c2b82751fd507ae60d171",
+      "license": "MIT"
+    },
+    {
+      "id": "tabler-book",
+      "name": "Book",
+      "category": "Book ornaments",
+      "source": "https://raw.githubusercontent.com/tabler/tabler-icons/cade2ac67f6c09f96363f096410172ebd1cc9eb3/icons/outline/book.svg",
+      "sha256": "fbf17cceb63c4ffe93b8709ddadb9e9dd6c741f2530d85167980915712bbb4d5",
+      "license": "MIT"
+    },
+    {
+      "id": "tabler-feather",
+      "name": "Feather",
+      "category": "Book ornaments",
+      "source": "https://raw.githubusercontent.com/tabler/tabler-icons/cade2ac67f6c09f96363f096410172ebd1cc9eb3/icons/outline/feather.svg",
+      "sha256": "2f98d2ad541aa041e441b50178c33e3a2997dca8ef02262934c85238fd9a4660",
+      "license": "MIT"
+    },
+    {
+      "id": "tabler-laurel-wreath",
+      "name": "Laurel Wreath",
+      "category": "Book ornaments",
+      "source": "https://raw.githubusercontent.com/tabler/tabler-icons/cade2ac67f6c09f96363f096410172ebd1cc9eb3/icons/outline/laurel-wreath.svg",
+      "sha256": "b37579c89de1a65aa67735fab59ce3b211fc9a6c0b58510b3a06b26bedd2ad9f",
+      "license": "MIT"
+    },
+    {
+      "id": "tabler-bookmark",
+      "name": "Bookmark",
+      "category": "Book ornaments",
+      "source": "https://raw.githubusercontent.com/tabler/tabler-icons/cade2ac67f6c09f96363f096410172ebd1cc9eb3/icons/outline/bookmark.svg",
+      "sha256": "7e42cecd8b214031c365808b4706b7d962f4a34593da26819ad3b5bb73417648",
+      "license": "MIT"
+    }
+  ]
+}

@@ -1,0 +1,77 @@
+/* Keep navigation geometry/palette aligned with Books app/site.css and app/theme.css.
+   Only overview chrome is themed. Story canvas palettes and artwork are untouched. */
+:root { --ui-font: "Segoe UI", Arial, sans-serif; }
+html[data-ui-theme='light'] {
+  --ui-ink: #2b2416; --ui-muted: #7a6e57; --ui-accent: #2e5aac;
+  --ui-accent-dark: #234885; --ui-tint: #f8edc8; --ui-line: #e5dcc7;
+  --ui-on-accent: #fff; --ui-subtle: #6b6358; --ui-serif: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --ui-workspace: #eeede6; --ui-surface: #fdfbf4; --ui-raised: #fff;
+  --ui-hover: #f8f2e2; --ui-field: #fff;
+}
+html[data-ui-theme='dark'] {
+  --ui-ink: #f4efdf; --ui-muted: #b8bdc6; --ui-accent: #91b5f5;
+  --ui-accent-dark: #bcd2fa; --ui-tint: #243b5a; --ui-line: #3d485b;
+  --ui-on-accent: #132341; --ui-subtle: #b8bdc6; --ui-serif: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --ui-workspace: #131b29; --ui-surface: #1c2636; --ui-raised: #253247;
+  --ui-hover: #2c3b50; --ui-field: #172131;
+}
+/* Scheme is scoped to the overview, not native controls inside authored content. */
+html[data-ui-theme='light'] .notes-overview-shell { color-scheme: light; }
+html[data-ui-theme='dark'] .notes-overview-shell { color-scheme: dark; }
+.notes-overview-shell { background: var(--ui-surface); color: var(--ui-ink); }
+.site-navigation{height:70px;flex:0 0 70px;display:flex;align-items:center;justify-content:space-between;gap:24px;padding:0 4.5%;border-bottom:1px solid var(--ui-line);background:var(--ui-surface);color:var(--ui-ink);z-index:35;font:13px var(--ui-font);-webkit-font-smoothing:auto}
+.site-navigation a{text-decoration:none;color:inherit}.site-wordmark{display:flex;align-items:center;gap:11px;font:600 25px Georgia,serif;letter-spacing:-.7px}.site-wordmark svg{width:33px;height:33px;color:var(--ui-accent-dark)}.site-wordmark-note{display:block;font:12px var(--ui-font,'Segoe UI',Arial,sans-serif);letter-spacing:.1px;margin-top:3px;color:var(--ui-subtle,#6b6358)}
+.site-navigation nav{display:flex;align-items:center;gap:6px;height:27px}.site-navigation nav a{font-size:13px;padding:11px 20px;border-radius:10px}.site-navigation nav a[aria-current=page]{background:var(--ui-tint);color:var(--ui-accent-dark)}.site-navigation nav a:hover{background:var(--ui-hover)}.site-navigation a:focus-visible{outline:3px solid #737cc5;outline-offset:4px}
+.ui-theme-toggle {
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  min-width:44px;min-height:44px;padding:8px 13px;border-radius:999px;
+  border:1px solid var(--ui-line,#e5dcc7);background:var(--ui-raised,#fff);
+  color:var(--ui-ink,#2b2416);font:600 12px/1.2 var(--ui-font,sans-serif);
+  cursor:pointer;box-shadow:0 3px 14px #21112616;
+}
+.ui-theme-toggle:hover{background:var(--ui-hover)}
+.ui-theme-toggle:focus-visible{outline:3px solid var(--ui-accent);outline-offset:3px}
+.ui-theme-toggle[aria-pressed=true]{background:var(--ui-raised);color:var(--ui-ink)}
+.ui-theme-sun,.ui-theme-moon{font-size:21px;line-height:1}
+.ui-theme-moon{display:none}
+html[data-ui-theme='dark'] .ui-theme-sun{display:none}
+html[data-ui-theme='dark'] .ui-theme-moon{display:inline}
+.site-nav-end{display:flex;align-items:center;gap:10px}
+.site-feedback-button{display:grid;place-items:center;width:42px;height:42px;padding:0;border:1px solid var(--ui-line);border-radius:999px;background:var(--ui-surface);color:var(--ui-ink);cursor:pointer}
+.site-feedback-button:hover{background:var(--ui-hover)}
+.site-feedback-button:focus-visible{outline:3px solid var(--ui-accent);outline-offset:2px}
+@media(max-width:700px){.site-nav-end{gap:6px}.site-feedback-button{width:40px;height:40px}.site-navigation{height:60px;flex-basis:60px;padding:0 16px;gap:8px}.site-wordmark{font-size:22px;gap:7px}.site-wordmark svg{width:25px;height:25px}.site-wordmark-note{display:none}.site-navigation nav{gap:0}.site-navigation nav a{padding:12px 9px;font-size:12px}.site-navigation .ui-theme-label{display:none}.site-navigation .ui-theme-toggle{padding:5px;gap:2px;min-width:44px}}
+@media print{.site-navigation{display:none!important}}
+/* Dashboard selectors cannot reach the editor, documents, or story artwork. */
+html[data-ui-theme] .notes-overview-shell main :is(.text-ink-900,.text-ink-700){color:var(--ui-ink)}
+html[data-ui-theme] .notes-overview-shell main .text-ink-500{color:var(--ui-muted)}
+html[data-ui-theme] .notes-overview-shell .emboss{background:var(--ui-raised);border-color:var(--ui-line);box-shadow:0 4px 14px -6px #0003}
+html[data-ui-theme] .notes-overview-shell main input{background:var(--ui-field);color:var(--ui-ink);border-color:var(--ui-line)}
+html[data-ui-theme='dark'] .notes-overview-shell main .bg-white\/80{background:var(--ui-raised)}
+/* Phones: same one-row header as Home and Books (wordmark name and labels shrink away). */
+@media (max-width:600px){
+ .site-navigation{padding:0 16px;gap:8px}
+ .site-navigation .site-wordmark>span{display:none}
+ .site-navigation nav{gap:2px}
+ .site-navigation nav a{padding:8px 10px}
+ .site-navigation .ui-theme-label{display:none}
+ .site-nav-end{gap:6px}
+}
+
+/* The page links sit dead centre whatever is at either end, so they never shift between Home, Notes and Books. */
+@media(min-width:361px){.site-navigation{display:grid;grid-template-columns:minmax(max-content,1fr) auto minmax(max-content,1fr)}.site-navigation>.site-wordmark{justify-self:start}.site-navigation>.site-nav-end{justify-self:end}}
+
+/* Page not found (Home and Books zone; Notes has a copy in site-theme.css). */
+.not-found{display:grid;place-items:center;min-height:100%;padding:48px 20px;box-sizing:border-box;background:var(--ui-surface);color:var(--ui-ink)}
+.not-found section{max-width:460px;text-align:center}
+.not-found-mark{margin:0;font:400 64px/1 var(--ui-serif,Georgia,serif);color:var(--ui-line,#e5dcc7);letter-spacing:2px}
+.not-found h1{margin:14px 0 10px;font:400 32px/1.15 var(--ui-serif,Georgia,serif);letter-spacing:-.4px}
+.not-found p:not(.not-found-mark){margin:0;font-size:15px;line-height:1.55;color:var(--ui-muted)}
+.not-found-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-top:26px}
+.not-found-actions a{display:inline-flex;align-items:center;min-height:44px;padding:0 18px;border:1px solid var(--ui-line);border-radius:10px;background:var(--ui-raised);color:var(--ui-ink);font-weight:600;font-size:14px;text-decoration:none}
+.not-found-actions a:hover{background:var(--ui-hover)}
+.not-found-actions a.primary{background:var(--ui-accent);border-color:var(--ui-accent);color:var(--ui-on-accent)}
+.not-found-actions a:focus-visible{outline:3px solid var(--ui-accent);outline-offset:3px}
+
+/* Phones: identical end buttons in every app, so the page links stay centred. */
+@media(max-width:700px){.site-navigation .ui-theme-toggle{width:44px;min-width:44px;padding:0;gap:0;justify-content:center}.site-navigation :is(.feedback-button,.site-feedback-button){width:40px;min-width:40px}}

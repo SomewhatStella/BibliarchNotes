@@ -1,0 +1,2 @@
+import {test,expect} from './editor-fixture';
+test('physical numbering and recto chapters track generated pages',async({page})=>{await page.goto('/books');await expect(page.locator('.pagination-page .page-footer').nth(1)).toHaveText('2');await page.getByRole('button',{name:'Page styles ▾'}).click();await page.getByLabel('Start chapters on right pages').check();await expect(page.locator('.recto-blank')).toHaveCount(1);await expect(page.locator('.pagination-page .page-footer').nth(1)).toHaveText('3');});

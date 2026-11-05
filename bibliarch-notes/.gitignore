@@ -1,0 +1,10 @@
+/node_modules
+/.next
+/out
+*.tsbuildinfo
+.env*.local
+
+# Verification builds and local test runs
+/.next*
+/test-results
+/playwright-report

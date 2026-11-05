@@ -1,0 +1,20 @@
+import {test,expect} from '@playwright/test';
+test('large decal moves without jumping, bleeds with ghost, and text survives off-page reload',async({page},info)=>{
+ await page.goto('/books');await page.getByRole('button',{name:'Create Japanese light novel',exact:true}).click();
+ await expect(page.getByText('Saved on this device',{exact:true})).toBeVisible();
+ await page.evaluate(()=>new Promise<void>((resolve,reject)=>{const open=indexedDB.open('bibliarch-books',1);open.onerror=()=>reject(open.error);open.onsuccess=()=>{const db=open.result,tx=db.transaction('library','readwrite'),store=tx.objectStore('library'),req=store.get('bibliarch-books-v1');req.onsuccess=()=>{const v=JSON.parse(req.result.raw);const s=v.books.flatMap((b:any)=>b.chapters.flatMap((c:any)=>c.scenes)).find((s:any)=>s.template==='color-art');s.decals=[{id:'bleed-stars',src:'builtin:stars',alt:'Stars',x:30,y:80,width:80,rotation:0,opacity:1}];s.overlay={text:'Text across the edge',x:15,y:20,size:32,color:'#222222'};store.put({raw:JSON.stringify(v),revision:crypto.randomUUID()},'bibliarch-books-v1');};tx.oncomplete=()=>{db.close();resolve();};tx.onabort=()=>{db.close();reject(tx.error);};};}));
+ await page.reload();await page.getByRole('textbox',{name:'Book title',exact:true}).waitFor();
+ const art=page.locator('.template-color-art'),canvas=art.locator('.illustration-page'),decal=art.locator('[data-decal-id="bleed-stars"]');await canvas.scrollIntoViewIfNeeded();
+ await decal.click({position:{x:20,y:20}});const b=(await decal.boundingBox())!;await page.mouse.move(b.x+20,b.y+20);await page.mouse.down();await page.mouse.move(b.x+25,b.y+25,{steps:2});await page.mouse.up();
+ expect((await decal.boundingBox())!.x-b.x).toBeCloseTo(5,0);
+ await expect(page.locator('.decal-selection')).toBeVisible();
+ const saved=()=>page.evaluate(()=>new Promise<any>((resolve,reject)=>{const open=indexedDB.open('bibliarch-books',1);open.onerror=()=>reject(open.error);open.onsuccess=()=>{const db=open.result,tx=db.transaction('library','readonly'),req=tx.objectStore('library').get('bibliarch-books-v1');tx.oncomplete=()=>{db.close();resolve(JSON.parse(req.result.raw).books.flatMap((b:any)=>b.chapters.flatMap((c:any)=>c.scenes)).find((s:any)=>s.template==='color-art'));};tx.onabort=()=>{db.close();reject(tx.error);};};}));
+ const p=(await canvas.boundingBox())!,d=(await decal.boundingBox())!;await page.mouse.move(d.x+20,d.y+20);await page.mouse.down();await page.mouse.move(d.x+20-p.width*.5,d.y+20,{steps:10});await page.mouse.up();
+ await expect.poll(async()=>(await saved()).decals[0].x).toBeLessThan(0);
+ await expect(art.locator('.decal-overflow-ghost')).toBeVisible();
+ await art.getByRole('textbox',{name:'Illustration text'}).click();
+ const handle=art.getByLabel('Move text');await handle.scrollIntoViewIfNeeded();await handle.click();const h=(await handle.boundingBox())!;await page.mouse.move(h.x+h.width/2,h.y+h.height/2);await page.mouse.down();await page.mouse.move(h.x+h.width/2-p.width*.25,h.y+h.height/2,{steps:10});await page.mouse.up();
+ await expect.poll(async()=>(await saved()).overlay.x).toBeLessThan(0);
+ const state=await saved();await page.screenshot({path:info.outputPath('offpage-artwork.png'),fullPage:true});
+ await page.reload();await page.getByRole('textbox',{name:'Book title',exact:true}).waitFor();expect((await saved()).decals).toEqual(state.decals);expect((await saved()).overlay).toEqual(state.overlay);
+});

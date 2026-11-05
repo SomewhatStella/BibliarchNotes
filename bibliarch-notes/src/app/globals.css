@@ -1,0 +1,117 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  /* One type family across Home, Notes and Books: the serif for headings, the system
+     sans for everything else (including small caps labels that used to be monospace). */
+  --font-display: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --font-body: "Segoe UI", Arial, sans-serif;
+  --font-mono: "Segoe UI", Arial, sans-serif;
+  /* The story's palette (lib/color-palette.ts) overwrites these at runtime
+     via applyPaletteToDOM — these are just sane defaults before it loads or
+     for stories that never set one. "Main color" for nodes; a node's own
+     "sub color" (node.color) overrides --color-node-default per card. */
+  --color-node-default: #2e5aac;
+  --color-node-text: #2b2416;
+  --color-canvas-bg: #f5f6f9;
+  --color-connection-default: #2e5aac;
+}
+
+/* Big serif headings read lighter, as on Home and Books. */
+:is(h1, h2).font-display { font-weight: 500; }
+
+/* Without this, nothing stops the document itself from growing past the
+   viewport and scrolling as a whole — which drags the sidebar and toolbar
+   along with the canvas instead of leaving them fixed while only the
+   canvas's own internal viewport scrolls. Found by actually scrolling the
+   real app: the top bar moved. */
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  background: #fdfbf4;
+  color: #2b2416;
+}
+
+/* Embossed card — the Tomodachi Life "soft toy" feel: a hairline highlight
+   on top, a soft shadow beneath, never a flat stroke. */
+.emboss {
+  background: #fffdf7;
+  border: 1px solid rgba(43, 36, 22, 0.08);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 1px 2px rgba(43, 36, 22, 0.08),
+    0 4px 14px -6px rgba(43, 36, 22, 0.18);
+}
+
+.emboss-pressed {
+  box-shadow:
+    inset 0 1px 3px rgba(43, 36, 22, 0.18),
+    0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+/* The canvas ground: soft dots, visible but never competing with cards.
+   background-color follows the story's palette accent. */
+.canvas-ground {
+  background-color: var(--color-canvas-bg);
+  background-image: radial-gradient(circle, rgba(167, 142, 69, 0.35) 1.4px, transparent 1.4px);
+}
+
+* { scrollbar-width: thin; scrollbar-color: rgba(168, 126, 40, 0.35) transparent; }
+*::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+*::-webkit-scrollbar-thumb {
+  background: rgba(168, 126, 40, 0.35);
+  border-radius: 6px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.pop-in {
+  animation: pop-in 120ms ease-out;
+}
+
+/* Reserve real space for styling; never float controls over editable cards. */
+.editor-workspace { display: flex; min-width: 0; overflow: hidden; }
+.editor-canvas { flex: 1; min-width: 0; min-height: 0; }
+.node-inspector { flex: 0 0 288px; min-height: 0; overflow-y: auto; background: #fffdf7; border-left: 1px solid #ddd; }
+@media (max-width: 700px) {
+  .editor-workspace { flex-direction: column; }
+  .node-inspector { flex: 0 0 42%; border-left: 0; border-top: 1px solid #ddd; }
+}
+/* A table's only paint belongs to its cells, not its resize bounds. */
+.table-node { background: transparent; border: 0; border-radius: 0; box-shadow: 0 1px 2px rgba(43,36,22,.08), 0 4px 14px -6px rgba(43,36,22,.22); }
+.table-node td { background-color: #fffdf7; }
+.table-node tr:nth-child(even) td { background-color: #f7f5ef; }
+
+
+.notes-overview-shell { height: 100dvh; display: flex; flex-direction: column; }
+
+
+/* Keep native cursor styling; avoid the platform's low-contrast grab hand. */
+:root {
+  --cursor-grab: default;
+  --cursor-grabbing: default;
+  --cursor-pointer: pointer;
+}
+button, a[href], summary, .cursor-pointer { cursor: var(--cursor-pointer); }
+.cursor-grab { cursor: var(--cursor-grab); }
+.cursor-grabbing, .active\:cursor-grabbing:active { cursor: var(--cursor-grabbing); }

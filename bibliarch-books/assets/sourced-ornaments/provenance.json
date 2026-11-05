@@ -1,0 +1,86 @@
+[
+  {
+    "name": "Vintage calligraphic border",
+    "source": "https://raw.githubusercontent.com/cyanidecupcake/openclipart-svg/e9da54c346f38ad9b67e43efb688beb783d106f8/svg/borders/vintage-calligraphy-border.svg",
+    "sha256": "866a97d7dfa69adeff53bc7dbf8b567cad5a65b26f714d65a80d54aaafac1c8c",
+    "author": "Not identified in upstream metadata",
+    "license": "CC0-1.0",
+    "licenseEvidence": "Embedded public-domain dedication and mirror CC0",
+    "metadata": "<ns0:metadata xmlns:dc=\"http://purl.org/dc/elements/1.1/\" xmlns:ns0=\"http://www.w3.org/2000/svg\" xmlns:ns2=\"http://creativecommons.org/ns#\" xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\">\n    <rdf:RDF>\n      <ns2:Work>\n        <dc:format>image/svg+xml</dc:format>\n        <dc:type rdf:resource=\"http://purl.org/dc/dcmitype/StillImage\" />\n        <ns2:license rdf:resource=\"http://creativecommons.org/licenses/publicdomain/\" />\n        <dc:publisher>\n          <ns2:Agent rdf:about=\"http://openclipart.org/\">\n            <dc:title>Openclipart</dc:title>\n          </ns2:Agent>\n        </dc:publisher>\n      </ns2:Work>\n      <ns2:License rdf:about=\"http://creativecommons.org/licenses/publicdomain/\">\n        <ns2:permits rdf:resource=\"http://creativecommons.org/ns#Reproduction\" />\n        <ns2:permits rdf:resource=\"http://creativecommons.org/ns#Distribution\" />\n        <ns2:permits rdf:resource=\"http://creativecommons.org/ns#DerivativeWorks\" />\n      </ns2:License>\n    </rdf:RDF>\n  </ns0:metadata>\n",
+    "id": "sourced-vintage-border",
+    "category": "Frames",
+    "modifications": "Allowlisted SVG; monochrome presentation attributes; tight viewBox with 0.5% padding; original paths and transforms unchanged."
+  },
+  {
+    "name": "Vintage calligraphic portrait frame",
+    "source": "https://raw.githubusercontent.com/cyanidecupcake/openclipart-svg/e9da54c346f38ad9b67e43efb688beb783d106f8/svg/borders/vintage-calligraphy-frame-border.svg",
+    "sha256": "a917e65cd0889eb387e16c42be0e089d0f033e44ba33f36da813c249e49ead83",
+    "author": "Not identified in upstream metadata",
+    "license": "CC0-1.0",
+    "licenseEvidence": "Embedded public-domain dedication and mirror CC0",
+    "metadata": "<ns0:metadata xmlns:dc=\"http://purl.org/dc/elements/1.1/\" xmlns:ns0=\"http://www.w3.org/2000/svg\" xmlns:ns2=\"http://creativecommons.org/ns#\" xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\">\n    <rdf:RDF>\n      <ns2:Work>\n        <dc:format>image/svg+xml</dc:format>\n        <dc:type rdf:resource=\"http://purl.org/dc/dcmitype/StillImage\" />\n        <ns2:license rdf:resource=\"http://creativecommons.org/licenses/publicdomain/\" />\n        <dc:publisher>\n          <ns2:Agent rdf:about=\"http://openclipart.org/\">\n            <dc:title>Openclipart</dc:title>\n          </ns2:Agent>\n        </dc:publisher>\n      </ns2:Work>\n      <ns2:License rdf:about=\"http://creativecommons.org/licenses/publicdomain/\">\n        <ns2:permits rdf:resource=\"http://creativecommons.org/ns#Reproduction\" />\n        <ns2:permits rdf:resource=\"http://creativecommons.org/ns#Distribution\" />\n        <ns2:permits rdf:resource=\"http://creativecommons.org/ns#DerivativeWorks\" />\n      </ns2:License>\n    </rdf:RDF>\n  </ns0:metadata>\n",
+    "id": "sourced-vintage-portrait-frame",
+    "category": "Frames",
+    "modifications": "Allowlisted SVG; monochrome presentation attributes; tight viewBox with 0.5% padding; original paths and transforms unchanged."
+  },
+  {
+    "name": "Vintage calligraphic open frame",
+    "source": "https://raw.githubusercontent.com/cyanidecupcake/openclipart-svg/e9da54c346f38ad9b67e43efb688beb783d106f8/svg/borders/vintage-calligraphy-frame.svg",
+    "sha256": "642d03a5d9735ab2553e5fd508c0d26ef4624c454779682e3bb0e7b0c75aa005",
+    "author": "Not identified in upstream metadata",
+    "license": "CC0-1.0",
+    "licenseEvidence": "Embedded public-domain dedication and mirror CC0",
+    "metadata": "<ns0:metadata xmlns:dc=\"http://purl.org/dc/elements/1.1/\" xmlns:ns0=\"http://www.w3.org/2000/svg\" xmlns:ns2=\"http://creativecommons.org/ns#\" xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\"><rdf:RDF><ns2:Work><dc:format>image/svg+xml</dc:format><dc:type rdf:resource=\"http://purl.org/dc/dcmitype/StillImage\" /><ns2:license rdf:resource=\"http://creativecommons.org/licenses/publicdomain/\" /><dc:publisher><ns2:Agent rdf:about=\"http://openclipart.org/\"><dc:title>Openclipart</dc:title></ns2:Agent></dc:publisher></ns2:Work><ns2:License rdf:about=\"http://creativecommons.org/licenses/publicdomain/\"><ns2:permits rdf:resource=\"http://creativecommons.org/ns#Reproduction\" /><ns2:permits rdf:resource=\"http://creativecommons.org/ns#Distribution\" /><ns2:permits rdf:resource=\"http://creativecommons.org/ns#DerivativeWorks\" /></ns2:License></rdf:RDF></ns0:metadata>",
+    "id": "sourced-vintage-open-frame",
+    "category": "Frames",
+    "modifications": "Allowlisted SVG; monochrome presentation attributes; tight viewBox with 0.5% padding; original paths and transforms unchanged."
+  },
+  {
+    "name": "Delicate floral corner",
+    "source": "https://raw.githubusercontent.com/cyanidecupcake/openclipart-svg/e9da54c346f38ad9b67e43efb688beb783d106f8/svg/unsorted/Simple-corner-ornament.svg",
+    "sha256": "e81667ea96165248943972cae31f47e76c10c970f4bb908fc5c4b708d861f0b0",
+    "author": "Not identified in upstream metadata",
+    "license": "CC0-1.0",
+    "licenseEvidence": "Repository CC0/public-domain declaration only; file metadata does not identify author or license",
+    "metadata": "<ns0:metadata xmlns:dc=\"http://purl.org/dc/elements/1.1/\" xmlns:ns0=\"http://www.w3.org/2000/svg\" xmlns:ns2=\"http://creativecommons.org/ns#\" xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\" id=\"metadata7\">\n    <rdf:RDF>\n      <ns2:Work rdf:about=\"\">\n        <dc:format>image/svg+xml</dc:format>\n        <dc:type rdf:resource=\"http://purl.org/dc/dcmitype/StillImage\" />\n        <dc:title />\n      </ns2:Work>\n    </rdf:RDF>\n  </ns0:metadata>\n  ",
+    "id": "sourced-floral-corner",
+    "category": "Corners",
+    "modifications": "Allowlisted SVG; monochrome presentation attributes; tight viewBox with 0.5% padding; original paths and transforms unchanged."
+  },
+  {
+    "name": "Underline flourish — thread",
+    "source": "https://raw.githubusercontent.com/cyanidecupcake/openclipart-svg/e9da54c346f38ad9b67e43efb688beb783d106f8/svg/unsorted/Underline_Flourish.svg",
+    "sha256": "93c57056ecff643918d657aa7c153d4f70f38190f44f368f2d0ac23601fdc9bf",
+    "author": "JArt",
+    "license": "CC0-1.0",
+    "licenseEvidence": "Embedded public-domain dedication and mirror CC0",
+    "metadata": "<ns0:metadata xmlns:dc=\"http://purl.org/dc/elements/1.1/\" xmlns:ns0=\"http://www.w3.org/2000/svg\" xmlns:ns2=\"http://creativecommons.org/ns#\" xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\">\n    <rdf:RDF>\n      <ns2:Work>\n        <dc:format>image/svg+xml</dc:format>\n        <dc:type rdf:resource=\"http://purl.org/dc/dcmitype/StillImage\" />\n        <ns2:license rdf:resource=\"http://creativecommons.org/licenses/publicdomain/\" />\n        <dc:publisher>\n          <ns2:Agent rdf:about=\"http://openclipart.org/\">\n            <dc:title>Openclipart</dc:title>\n          </ns2:Agent>\n        </dc:publisher>\n        <dc:title>3 Underline Flourishes</dc:title>\n        <dc:date>2013-08-28T10:08:57</dc:date>\n        <dc:description>3 Stages of a flourish that can be used as a decorative underline to victorian labels, celtic themes posters or a nice card or letter.</dc:description>\n        <dc:source>https://openclipart.org/detail/182345/3-underline-flourishes-by-jart-182345</dc:source>\n        <dc:creator>\n          <ns2:Agent>\n            <dc:title>JArt</dc:title>\n          </ns2:Agent>\n        </dc:creator>\n        <dc:subject>\n          <rdf:Bag>\n            <rdf:li>black</rdf:li>\n            <rdf:li>card</rdf:li>\n            <rdf:li>celtic</rdf:li>\n            <rdf:li>decorate</rdf:li>\n            <rdf:li>decorative</rdf:li>\n            <rdf:li>flourish</rdf:li>\n            <rdf:li>footer</rdf:li>\n            <rdf:li>header</rdf:li>\n            <rdf:li>letter</rdf:li>\n            <rdf:li>patter</rdf:li>\n            <rdf:li>underline</rdf:li>\n            <rdf:li>victorian</rdf:li>\n          </rdf:Bag>\n        </dc:subject>\n      </ns2:Work>\n      <ns2:License rdf:about=\"http://creativecommons.org/licenses/publicdomain/\">\n        <ns2:permits rdf:resource=\"http://creativecommons.org/ns#Reproduction\" />\n        <ns2:permits rdf:resource=\"http://creativecommons.org/ns#Distribution\" />\n        <ns2:permits rdf:resource=\"http://creativecommons.org/ns#DerivativeWorks\" />\n      </ns2:License>\n    </rdf:RDF>\n  </ns0:metadata>\n",
+    "id": "sourced-underline-thread",
+    "category": "Book ornaments",
+    "modifications": "Allowlisted SVG; monochrome presentation attributes; tight viewBox with 0.5% padding; original paths and transforms unchanged. Selected complete components of one original stacked divider."
+  },
+  {
+    "name": "Underline flourish — scroll",
+    "source": "https://raw.githubusercontent.com/cyanidecupcake/openclipart-svg/e9da54c346f38ad9b67e43efb688beb783d106f8/svg/unsorted/Underline_Flourish.svg",
+    "sha256": "93c57056ecff643918d657aa7c153d4f70f38190f44f368f2d0ac23601fdc9bf",
+    "author": "JArt",
+    "license": "CC0-1.0",
+    "licenseEvidence": "Embedded public-domain dedication and mirror CC0",
+    "metadata": "<ns0:metadata xmlns:dc=\"http://purl.org/dc/elements/1.1/\" xmlns:ns0=\"http://www.w3.org/2000/svg\" xmlns:ns2=\"http://creativecommons.org/ns#\" xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\">\n    <rdf:RDF>\n      <ns2:Work>\n        <dc:format>image/svg+xml</dc:format>\n        <dc:type rdf:resource=\"http://purl.org/dc/dcmitype/StillImage\" />\n        <ns2:license rdf:resource=\"http://creativecommons.org/licenses/publicdomain/\" />\n        <dc:publisher>\n          <ns2:Agent rdf:about=\"http://openclipart.org/\">\n            <dc:title>Openclipart</dc:title>\n          </ns2:Agent>\n        </dc:publisher>\n        <dc:title>3 Underline Flourishes</dc:title>\n        <dc:date>2013-08-28T10:08:57</dc:date>\n        <dc:description>3 Stages of a flourish that can be used as a decorative underline to victorian labels, celtic themes posters or a nice card or letter.</dc:description>\n        <dc:source>https://openclipart.org/detail/182345/3-underline-flourishes-by-jart-182345</dc:source>\n        <dc:creator>\n          <ns2:Agent>\n            <dc:title>JArt</dc:title>\n          </ns2:Agent>\n        </dc:creator>\n        <dc:subject>\n          <rdf:Bag>\n            <rdf:li>black</rdf:li>\n            <rdf:li>card</rdf:li>\n            <rdf:li>celtic</rdf:li>\n            <rdf:li>decorate</rdf:li>\n            <rdf:li>decorative</rdf:li>\n            <rdf:li>flourish</rdf:li>\n            <rdf:li>footer</rdf:li>\n            <rdf:li>header</rdf:li>\n            <rdf:li>letter</rdf:li>\n            <rdf:li>patter</rdf:li>\n            <rdf:li>underline</rdf:li>\n            <rdf:li>victorian</rdf:li>\n          </rdf:Bag>\n        </dc:subject>\n      </ns2:Work>\n      <ns2:License rdf:about=\"http://creativecommons.org/licenses/publicdomain/\">\n        <ns2:permits rdf:resource=\"http://creativecommons.org/ns#Reproduction\" />\n        <ns2:permits rdf:resource=\"http://creativecommons.org/ns#Distribution\" />\n        <ns2:permits rdf:resource=\"http://creativecommons.org/ns#DerivativeWorks\" />\n      </ns2:License>\n    </rdf:RDF>\n  </ns0:metadata>\n",
+    "id": "sourced-underline-scroll",
+    "category": "Book ornaments",
+    "modifications": "Allowlisted SVG; monochrome presentation attributes; tight viewBox with 0.5% padding; original paths and transforms unchanged. Selected complete components of one original stacked divider."
+  },
+  {
+    "name": "Underline flourish — elaborate",
+    "source": "https://raw.githubusercontent.com/cyanidecupcake/openclipart-svg/e9da54c346f38ad9b67e43efb688beb783d106f8/svg/unsorted/Underline_Flourish.svg",
+    "sha256": "93c57056ecff643918d657aa7c153d4f70f38190f44f368f2d0ac23601fdc9bf",
+    "author": "JArt",
+    "license": "CC0-1.0",
+    "licenseEvidence": "Embedded public-domain dedication and mirror CC0",
+    "metadata": "<ns0:metadata xmlns:dc=\"http://purl.org/dc/elements/1.1/\" xmlns:ns0=\"http://www.w3.org/2000/svg\" xmlns:ns2=\"http://creativecommons.org/ns#\" xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\">\n    <rdf:RDF>\n      <ns2:Work>\n        <dc:format>image/svg+xml</dc:format>\n        <dc:type rdf:resource=\"http://purl.org/dc/dcmitype/StillImage\" />\n        <ns2:license rdf:resource=\"http://creativecommons.org/licenses/publicdomain/\" />\n        <dc:publisher>\n          <ns2:Agent rdf:about=\"http://openclipart.org/\">\n            <dc:title>Openclipart</dc:title>\n          </ns2:Agent>\n        </dc:publisher>\n        <dc:title>3 Underline Flourishes</dc:title>\n        <dc:date>2013-08-28T10:08:57</dc:date>\n        <dc:description>3 Stages of a flourish that can be used as a decorative underline to victorian labels, celtic themes posters or a nice card or letter.</dc:description>\n        <dc:source>https://openclipart.org/detail/182345/3-underline-flourishes-by-jart-182345</dc:source>\n        <dc:creator>\n          <ns2:Agent>\n            <dc:title>JArt</dc:title>\n          </ns2:Agent>\n        </dc:creator>\n        <dc:subject>\n          <rdf:Bag>\n            <rdf:li>black</rdf:li>\n            <rdf:li>card</rdf:li>\n            <rdf:li>celtic</rdf:li>\n            <rdf:li>decorate</rdf:li>\n            <rdf:li>decorative</rdf:li>\n            <rdf:li>flourish</rdf:li>\n            <rdf:li>footer</rdf:li>\n            <rdf:li>header</rdf:li>\n            <rdf:li>letter</rdf:li>\n            <rdf:li>patter</rdf:li>\n            <rdf:li>underline</rdf:li>\n            <rdf:li>victorian</rdf:li>\n          </rdf:Bag>\n        </dc:subject>\n      </ns2:Work>\n      <ns2:License rdf:about=\"http://creativecommons.org/licenses/publicdomain/\">\n        <ns2:permits rdf:resource=\"http://creativecommons.org/ns#Reproduction\" />\n        <ns2:permits rdf:resource=\"http://creativecommons.org/ns#Distribution\" />\n        <ns2:permits rdf:resource=\"http://creativecommons.org/ns#DerivativeWorks\" />\n      </ns2:License>\n    </rdf:RDF>\n  </ns0:metadata>\n",
+    "id": "sourced-underline-elaborate",
+    "category": "Book ornaments",
+    "modifications": "Allowlisted SVG; monochrome presentation attributes; tight viewBox with 0.5% padding; original paths and transforms unchanged. Selected complete components of one original stacked divider."
+  }
+]

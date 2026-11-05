@@ -1,0 +1,7 @@
+import {test,expect} from '@playwright/test';
+test('line breaks, collapsed keyboard formatting and plain-text multiline paste persist',async({page})=>{
+ await page.goto('/books');await page.getByRole('button',{name:'Create Japanese light novel',exact:true}).click();const art=page.locator('.template-color-art');await art.click();await page.getByRole('tab',{name:'Text',exact:true}).click();await page.getByRole('button',{name:'Add text to picture',exact:true}).click();const text=art.getByRole('textbox',{name:'Illustration text'});await text.fill('First');await text.press('End');await text.press('Enter');await text.press('Control+b');await text.press('Control+i');await page.keyboard.type('Apple');
+ const saved=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('bibliarch-books-v1')!).books.flatMap((b:any)=>b.chapters.flatMap((c:any)=>c.scenes)).find((s:any)=>s.template==='color-art').overlay);
+ await expect.poll(async()=>(await saved()).text).toBe('First\nApple');const o=await saved();expect(o.runs.find((r:any)=>r.text.includes('Apple'))).toMatchObject({bold:true,italic:true});expect(o.runs[0].bold).toBe(false);
+ await text.evaluate(el=>{const e=new ClipboardEvent('paste',{bubbles:true,cancelable:true,clipboardData:new DataTransfer()});e.clipboardData!.setData('text/plain','\nSecond\nThird');el.dispatchEvent(e);});await expect.poll(async()=>(await saved()).text).toBe('First\nApple\nSecond\nThird');await page.reload();await expect(text).toHaveText('First\nApple\nSecond\nThird');
+});

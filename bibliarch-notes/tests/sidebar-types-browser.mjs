@@ -1,0 +1,98 @@
+// Isolated component harness: ephemeral localhost origin and a fresh browser context.
+import { build } from 'esbuild';
+import { chromium } from 'playwright';
+import { createServer } from 'node:http';
+import { readFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { execFileSync } from 'node:child_process';
+import assert from 'node:assert/strict';
+const dir = mkdtempSync(join(tmpdir(), 'notes-sidebar-types-'));
+await build({ entryPoints: ['tests/sidebar-types-fixture.tsx'], bundle: true, outfile: join(dir, 'fixture.js'), jsx: 'automatic', alias: { '@': './src' } });
+execFileSync(process.execPath, ['node_modules/tailwindcss/lib/cli.js', '-i', 'src/app/globals.css', '-o', join(dir, 'fixture.css')]);
+const server = createServer((req, res) => {
+  const file = req.url === '/fixture.js' ? 'fixture.js' : req.url === '/fixture.css' ? 'fixture.css' : null;
+  res.setHeader('Content-Type', file?.endsWith('js') ? 'text/javascript' : file ? 'text/css' : 'text/html');
+  res.end(file ? readFileSync(join(dir, file)) : '<link rel="stylesheet" href="/fixture.css"><div id="root"></div><script src="/fixture.js"></script>');
+});
+await new Promise(r => server.listen(0, '127.0.0.1', r));
+const browser = await chromium.launch();
+try {
+  const page = await browser.newPage({ viewport: { width: 1000, height: 800 } });
+  const errors = [];
+  page.on('pageerror', e => errors.push(e.message));
+  await page.route('**/*', r => new URL(r.request().url()).hostname === '127.0.0.1' ? r.continue() : r.abort());
+  const url = `http://127.0.0.1:${server.address().port}`;
+  await page.goto(url);
+  const text = page.getByRole('button', { name: 'Text', exact: true });
+  // Synchronous enter -> portal appears without timers or native title delay.
+  await text.dispatchEvent('mouseenter');
+  await text.hover();
+  const tooltip = page.getByRole('tooltip');
+  await tooltip.waitFor();
+  assert.equal(await text.getAttribute('title'), null);
+  assert.equal(await tooltip.evaluate(e => e.parentElement === document.body), true);
+  const b = await text.boundingBox(), t = await tooltip.boundingBox();
+  assert.equal(t.x, b.x + b.width + 10);
+  assert.ok(Math.abs(t.y + t.height / 2 - (b.y + b.height / 2)) < 1);
+  assert.equal(await tooltip.evaluate(e => getComputedStyle(e).backgroundColor), 'rgb(53, 110, 170)');
+  await page.keyboard.press('Escape');
+  assert.equal(await tooltip.count(), 0);
+  await text.focus();
+  await tooltip.waitFor();
+  await page.locator('.overflow-y-auto').evaluate(e => { e.scrollTop = 500; });
+  await page.getByRole('tooltip').filter({ hasText: /^Text$/ }).waitFor({ state: 'detached' });
+  const manage = page.getByRole('button', { name: 'Custom folder types', exact: true });
+  assert.equal(await manage.locator('svg.lucide-layout-template').count(), 1);
+  await manage.click();
+  const dialog = page.getByRole('dialog');
+  await dialog.waitFor();
+  assert.equal(await page.evaluate(() => localStorage.length), 0, 'opening never writes storage');
+  await page.getByLabel('Type name', { exact: true }).fill('World guide');
+  await page.locator('label').filter({ has: page.getByRole('radio', { name: /Location/ }) }).click();
+  assert.equal(await page.getByRole('radio', { name: /Location/ }).isChecked(), true);
+  await page.getByRole('button', { name: 'Save type', exact: true }).click();
+  const card = page.getByRole('article', { name: 'World guide' });
+  await card.waitFor();
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('bibliarch-custom-templates')));
+  assert.equal(saved[0].displayType, 'location');
+  assert.equal(saved[0].nodes[0].id, 'fixture-card');
+  // Imported metadata and nested interiors must survive edit-with-keep.
+  await page.evaluate(() => {
+    const key = 'bibliarch-custom-templates', types = JSON.parse(localStorage.getItem(key));
+    Object.assign(types[0], { customIcon: 'Castle', bio: 'Original bio', profileImageUrl: 'original-image', interiors: { nested: { nodes: [], connections: [] } } });
+    localStorage.setItem(key, JSON.stringify(types));
+  });
+  await page.getByRole('button', { name: 'Close', exact: true }).click();
+  await manage.click();
+  await page.getByRole('button', { name: 'Edit type World guide' }).click();
+  await page.getByLabel('Type name', { exact: true }).fill('World guide revised');
+  await page.getByRole('button', { name: 'Save type', exact: true }).click();
+  const edited = await page.evaluate(() => JSON.parse(localStorage.getItem('bibliarch-custom-templates'))[0]);
+  for (const key of ['id', 'createdAt', 'nodes', 'connections']) assert.deepEqual(edited[key], saved[0][key]);
+  assert.equal(edited.customIcon, 'Castle'); assert.equal(edited.bio, 'Original bio'); assert.equal(edited.profileImageUrl, 'original-image');
+  assert.deepEqual(edited.interiors, { nested: { nodes: [], connections: [] } });
+  await page.getByRole('button', { name: 'Edit type World guide revised' }).click();
+  await page.getByLabel('Default interior').selectOption('empty');
+  await page.getByRole('button', { name: 'Save type', exact: true }).click();
+  const empty = await page.evaluate(() => JSON.parse(localStorage.getItem('bibliarch-custom-templates'))[0]);
+  assert.deepEqual(empty.nodes, []); assert.equal(empty.interiors, undefined);
+  await page.setViewportSize({ width: 390, height: 700 });
+  assert.ok(await dialog.evaluate(e => e.getBoundingClientRect().width <= window.innerWidth));
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+  await page.keyboard.press('Escape');
+  assert.equal(await dialog.count(), 0);
+  await page.evaluate(() => localStorage.setItem('bibliarch-custom-templates', '{broken'));
+  await manage.click();
+  await page.getByRole('alert').waitFor();
+  assert.equal(await page.getByRole('button', { name: 'Save type', exact: true }).isDisabled(), true);
+  assert.equal(await page.evaluate(() => localStorage.getItem('bibliarch-custom-templates')), '{broken');
+  await page.getByRole('button', { name: 'Close', exact: true }).click();
+  assert.equal(await page.getByRole('button', { name: 'Collapse sidebar' }).count(), 0);
+  assert.deepEqual(errors, []);
+  console.log('PASS: portal geometry/color, scroll/Escape/focus dismissal, distinct tool icon, visual appearance selection, create/edit/empty data preservation, corrupt-data guard, narrow layout, collapsed rail.');
+} finally {
+  await browser.close();
+  await new Promise(r => server.close(r));
+  rmSync(dir, { recursive: true, force: true });
+}

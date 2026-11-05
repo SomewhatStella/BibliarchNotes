@@ -1,0 +1,26 @@
+/* Document-first chrome; book styling remains controlled by manuscript appearance. */
+.studio .masthead{padding:8px 18px 5px;min-height:68px}
+.studio .format-row{align-items:center;flex-wrap:nowrap;padding:3px 8px;margin:0 12px 8px;min-height:40px;gap:4px}
+.studio .toolbar{flex-wrap:nowrap;overflow-x:auto;align-items:center}
+.studio .toolbar>*{flex-shrink:0}
+.studio .format-row>button,.studio .format-row>select{white-space:nowrap;margin-top:0}
+.studio .document-scroller{background:#eeedef}
+.studio .outline.panel{width:230px;flex:0 0 230px;background:#f8f7f9;padding:16px 14px}
+.studio .outline h2{font-size:12px;color:#64566b;margin:22px 8px 14px}
+.studio .outline>section{border-left:1px solid #d8d0dc;margin-left:8px;padding-left:7px}
+.studio .outline .chapter-row>button{font-size:14px;font-weight:600;line-height:1.5}
+.studio .outline .outline-page{position:relative;font-size:13px;line-height:1.5;padding:8px 10px 8px 20px;color:#665b6b;white-space:normal;text-align:left}
+.studio .outline .outline-page.selected{background:#ece5ef;color:#56365e;font-weight:600}
+.studio .outline .outline-page.selected:before{content:'';position:absolute;left:-9px;top:3px;bottom:3px;width:3px;border-radius:2px;background:#795280}
+.studio .page-tools{display:flex;flex-direction:row-reverse;width:64px;flex:0 0 64px;padding:0;overflow:visible;background:#f8f7f9;border-left:1px solid #ddd6df;min-height:0}
+.studio .page-tools.is-expanded{width:300px;flex-basis:300px}
+.studio .page-tools .tool-rail[role=tablist]{display:flex;flex-direction:column;flex:0 0 64px;align-items:center;padding:12px 3px;gap:6px;height:100%;border-left:1px solid #e6dfe8}
+.studio .tool-rail button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;width:58px;height:60px;padding:6px 0;margin:0;border:0;background:transparent;text-align:center;border-radius:8px;color:#6b526f}
+.studio .tool-rail button span{font-size:23px;line-height:1}
+.studio .tool-rail button small{font-size:9px}
+.studio .tool-rail button:hover,.studio .tool-rail button[aria-selected=true]{background:#e9dfed;color:#56345f}
+.studio .tool-content{width:236px;min-width:0;padding:12px;overflow:auto}
+.studio .tool-content[hidden]{display:none}
+.studio .tool-panel-heading{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #e5dce7;padding-bottom:10px;margin-bottom:12px;color:#614569}
+.studio .tool-panel-heading button{width:28px;padding:2px;text-align:center;margin:0;font-size:21px;border:0;background:transparent}
+@media(max-width:900px){.studio .outline.panel{width:190px;flex-basis:190px}.studio .page-tools.is-expanded{width:264px;flex-basis:264px}.studio .tool-content{width:200px}}

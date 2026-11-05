@@ -1,0 +1,31 @@
+import {test,expect} from '@playwright/test';
+test('light novel has the requested sequence and no prose title furniture',async({page})=>{
+ await page.goto('/books');await page.getByRole('button',{name:'Create Japanese light novel',exact:true}).click();
+ const manuscripts=page.getByRole('textbox',{name:'Manuscript',exact:true});
+ const sections=page.locator('.paper');
+ await expect(sections).toHaveCount(4);
+ for (const [index,template] of ['book-front','color-art','chapter-title','prose'].entries()) await expect(sections.nth(index)).toHaveClass(new RegExp(`template-${template}`));
+ await expect(manuscripts).toHaveCount(3);
+ await expect(manuscripts.nth(0).getByLabel('Page title',{exact:true})).toHaveValue('Japanese light novel');
+ await expect(sections.nth(1).getByRole('textbox',{name:'Manuscript',includeHidden:true})).toHaveCount(0);
+ await expect(sections.nth(1).getByLabel('Page title',{exact:true})).toHaveCount(0);
+ await expect(manuscripts.nth(1).getByLabel('Page title',{exact:true})).toHaveValue('Chapter one');
+ await expect(manuscripts.nth(2).locator('.pagination-prefix')).toBeEmpty();
+ await expect(manuscripts.nth(2).locator('h1')).toHaveCount(0);
+});
+test('prose has no heading gap; two-line drop caps preserve typing and reload',async({page})=>{
+ await page.goto('/books');await page.getByRole('button',{name:'Create Blank book',exact:true}).click();
+ const body=page.locator('.pagination-body').first(),p=body.locator(':scope > p').first();
+ await expect(body.locator('h1,input')).toHaveCount(0);
+ await expect(body.locator('.pagination-prefix')).toBeEmpty();
+ await p.click();await page.keyboard.type('Original prose remains intact.');
+ await page.getByRole('button',{name:'Format',exact:true}).click();await page.getByRole('button',{name:'Page styles and typography',exact:true}).click();
+ await page.getByRole('checkbox',{name:'Two-line drop cap'}).check();
+ await page.keyboard.press('Escape');
+ await expect(body).toHaveClass(/drop-cap/);
+ expect(await p.evaluate(el=>getComputedStyle(el,'::first-letter').getPropertyValue('initial-letter'))).toMatch(/^2/);
+ await p.click();await page.keyboard.press('End');await page.keyboard.type(' More.');await expect(p).toHaveText('Original prose remains intact. More.');
+ await page.reload();await page.getByRole('button',{name:'Open Untitled book',exact:true}).click();
+ await expect(page.locator('.pagination-body').first()).toHaveClass(/drop-cap/);
+ await expect(page.locator('.pagination-body > p').first()).toHaveText('Original prose remains intact. More.');
+});

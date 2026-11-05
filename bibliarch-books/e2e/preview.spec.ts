@@ -1,0 +1,2 @@
+import {test,expect} from './editor-fixture';
+test('print preview displays the generated paginated PDF',async({page})=>{await page.goto('/books');const response=page.waitForResponse(r=>r.url().endsWith('/api/pdf')&&r.request().method()==='POST');await page.getByRole('button',{name:'Print preview',exact:true}).click();expect((await response).status()).toBe(200);await expect(page.getByTitle('Print preview')).toHaveAttribute('src',/^blob:/);await page.getByRole('button',{name:'Close preview'}).click();await expect(page.getByTitle('Print preview')).toHaveCount(0);});

@@ -1,0 +1,3 @@
+import {defineConfig} from '@playwright/test';
+// Bounded current-workflow acceptance, not a replacement for the historical full suite.
+export default defineConfig({testDir:'./e2e',testMatch:['launch-mobile.spec.js','library-storage.spec.ts','library-gallery.spec.ts','light-novel.spec.js','picture-workflow.spec.js','page-settings.spec.ts','heading-selection.spec.js','book-3d-current.spec.js','selection-stability.spec.js','background-direct.spec.ts','background-interaction.spec.ts'],outputDir:'test-results-release',workers:1,use:{baseURL:process.env.BOOKS_TEST_URL||'http://127.0.0.1:3210',viewport:{width:1440,height:1000},screenshot:'only-on-failure',trace:'retain-on-failure'}});

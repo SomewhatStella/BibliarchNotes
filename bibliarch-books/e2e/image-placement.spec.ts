@@ -1,0 +1,18 @@
+import {test,expect} from '@playwright/test';
+test('move and resize the image object without cropping; reload and explicit crop',async({page},testInfo)=>{
+ await page.goto('/books');await page.getByRole('button',{name:'Create Japanese light novel',exact:true}).click();
+ const png=await page.evaluate(()=>{const c=document.createElement('canvas');c.width=800;c.height=400;const x=c.getContext('2d')!;x.fillStyle='#eeaa44';x.fillRect(0,0,800,400);x.fillStyle='#225599';x.fillRect(400,0,400,400);x.fillStyle='white';x.font='60px sans-serif';x.fillText('Picture • 800 × 400',80,220);return c.toDataURL().split(',')[1];});
+ const art=page.locator('.template-color-art');await art.getByLabel('Upload illustration file').setInputFiles({name:'landscape.png',mimeType:'image/png',buffer:Buffer.from(png,'base64')});
+ const img=art.locator('.illustration-art img');await expect(img).toBeVisible();await expect(img).toHaveJSProperty('complete',true);const src=await img.getAttribute('src');
+ // Reload leaves image unselected: the first gesture selects on click release without moving it.
+ await page.reload();await page.getByRole('textbox',{name:'Book title',exact:true}).waitFor();await expect(img).toBeVisible();await img.scrollIntoViewIfNeeded();const b=(await img.boundingBox())!;
+ await page.mouse.move(b.x+b.width/2,b.y+b.height/2);await page.mouse.down();await page.mouse.move(b.x+b.width/2+35,b.y+b.height/2+30,{steps:8});await page.mouse.up();
+ expect(await img.boundingBox()).toEqual(b);await expect(art.locator('.illustration-selection')).toBeVisible();
+ // Once selected by that single gesture, the next drag moves the unchanged source image.
+ await page.mouse.move(b.x+b.width/2,b.y+b.height/2);await page.mouse.down();await page.mouse.move(b.x+b.width/2+35,b.y+b.height/2+30,{steps:8});await page.mouse.up();
+ await expect(art.locator('.inline-crop')).toHaveCount(0);const moved=(await img.boundingBox())!;expect(moved.x).toBeGreaterThan(b.x+20);expect(moved.y).toBeGreaterThan(b.y+20);expect(await img.getAttribute('src')).toBe(src);
+ const h=(await art.getByLabel('Resize image top left',{exact:true}).boundingBox())!;await page.mouse.move(h.x+h.width/2,h.y+h.height/2);await page.mouse.down();await page.mouse.move(h.x+65,h.y+35,{steps:8});await page.mouse.up();const resized=(await img.boundingBox())!;expect(resized.width).toBeLessThan(moved.width-20);expect(resized.height).toBeLessThan(moved.height-10);expect(resized.width/resized.height).toBeCloseTo(moved.width/moved.height,2);expect(await img.getAttribute('src')).toBe(src);
+ const image=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('bibliarch-books-v1')!).books.flatMap((b:any)=>b.chapters.flatMap((c:any)=>c.scenes)).find((s:any)=>s.template==='color-art').image);
+ await expect.poll(async()=>!!(await image()).placement).toBe(true);const saved=await image();expect(saved.crop).toBeUndefined();await page.screenshot({path:testInfo.outputPath('image-placement.png')});await page.reload();await page.getByRole('textbox',{name:'Book title',exact:true}).waitFor();expect(await image()).toEqual(saved);await img.scrollIntoViewIfNeeded();expect((await img.boundingBox())!.width).toBeCloseTo(resized.width,0);
+ await art.getByRole('button',{name:'Select illustration',exact:true}).click();await art.getByRole('button',{name:'Crop',exact:true}).click();await expect(page.getByRole('dialog',{name:'Crop illustration',exact:true})).toBeVisible();await page.getByRole('dialog',{name:'Crop illustration',exact:true}).getByRole('button',{name:'Apply crop',exact:true}).click();await expect(page.getByRole('dialog',{name:'Crop illustration',exact:true})).toHaveCount(0);expect((await image()).placement).toEqual(saved.placement);
+});

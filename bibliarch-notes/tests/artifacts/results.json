@@ -1,0 +1,26 @@
+[
+  {
+    "name": "visible folder open button without dragging",
+    "pass": true
+  },
+  {
+    "name": "table has no decorative outer card",
+    "pass": true
+  },
+  {
+    "name": "table bounds contain only cells and selected controls stay outside",
+    "pass": true
+  },
+  {
+    "name": "inspector reserves space, controls do not cover canvas",
+    "pass": true
+  },
+  {
+    "name": "zoom controls reserve space below the canvas",
+    "pass": true
+  },
+  {
+    "name": "editing, table drag and resize remain usable",
+    "pass": true
+  }
+]

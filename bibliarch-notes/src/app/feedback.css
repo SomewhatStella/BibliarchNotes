@@ -1,0 +1,40 @@
+/* Send feedback: same dialog as Home and Books (copied from bibliarch-books/app/feedback.css; keep in step). */
+/* Header end: feedback button beside Appearance on every page (not just inside Books). */
+.feedback-button{display:grid;place-items:center;width:42px;height:42px;padding:0;border:1px solid var(--ui-line,#e5dcc7);border-radius:999px;background:var(--ui-surface,#fff);color:var(--ui-ink,#2b2416);cursor:pointer}
+.feedback-button:hover{background:var(--ui-hover,#f8f2e2)}
+.feedback-button:focus-visible{outline:3px solid var(--ui-accent,#2e5aac);outline-offset:2px}
+.feedback-dialog{width:min(520px,calc(100vw - 24px));max-height:calc(100dvh - 32px);padding:0;border:1px solid var(--ui-line,#e5dcc7);border-radius:16px;background:var(--ui-raised,#fff);color:var(--ui-ink,#2b2416);box-shadow:0 24px 70px #1d170c40;font:14px/1.5 system-ui,'Segoe UI',sans-serif;overflow:auto}
+.feedback-dialog::backdrop{background:#1d170c55}
+.feedback-dialog[open]{animation:ask-in .14s ease-out}
+.fb-head{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--ui-line,#e5dcc7)}
+.fb-head h2{margin:0;font:400 22px/1.2 var(--ui-serif,Georgia,serif);letter-spacing:-.2px}
+.fb-close{display:grid;place-items:center;width:32px;height:32px;border:0;border-radius:999px;background:none;color:var(--ui-muted,#7a6e57);cursor:pointer}
+.fb-close:hover{background:var(--ui-hover,#f8f2e2);color:var(--ui-ink,#2b2416)}
+.fb-form{display:grid;gap:14px;padding:18px 22px 20px}
+.fb-types{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.fb-types button{display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:10px 12px;border:1px solid var(--ui-line,#e5dcc7);border-radius:12px;background:var(--ui-field,#fff);color:var(--ui-ink,#2b2416);text-align:left;cursor:pointer;font:inherit}
+.fb-types button:hover{border-color:var(--ui-accent,#2e5aac)}
+.fb-types button.on{border:2px solid var(--ui-accent,#2e5aac);padding:9px 11px;background:var(--ui-tint,#f8edc8)}
+.fb-types svg{color:var(--ui-accent,#2e5aac)}
+.fb-types strong{font-size:13.5px}
+.fb-types small{font-size:12px;line-height:1.35;color:var(--ui-subtle,#6b6358)}
+.fb-form label{display:grid;gap:6px;font-weight:600;font-size:13px}.fb-label{display:block}
+.fb-optional{font-weight:400;color:var(--ui-subtle,#6b6358)}
+.fb-form input,.fb-form textarea{box-sizing:border-box;width:100%;padding:9px 11px;border:1px solid var(--ui-line,#e5dcc7);border-radius:10px;background:var(--ui-field,#fff);color:var(--ui-ink,#2b2416);font:14px/1.45 system-ui,sans-serif;resize:vertical}
+.fb-form input:focus-visible,.fb-form textarea:focus-visible{outline:2px solid var(--ui-accent,#2e5aac);outline-offset:1px}
+.fb-note{margin:0;font-size:12px;color:var(--ui-subtle,#6b6358)}
+.fb-error{margin:0;padding:8px 10px;border-radius:8px;background:color-mix(in srgb,#b3403a 12%,transparent);color:#8a2a1f}
+html[data-ui-theme=dark] .fb-error{color:#f2a7b0}
+.fb-actions{display:flex;justify-content:flex-end;gap:10px}
+.fb-actions button{font:600 14px system-ui,sans-serif;padding:9px 18px;border-radius:10px;cursor:pointer;border:1px solid transparent}
+.fb-cancel{background:transparent;border-color:var(--ui-line,#e5dcc7)!important;color:var(--ui-ink,#2b2416)}
+.fb-cancel:hover{background:var(--ui-hover,#f8f2e2)}
+.fb-primary{background:var(--ui-accent,#2e5aac);color:var(--ui-on-accent,#fff)}
+.fb-primary:disabled{opacity:.5;cursor:default}
+.fb-sent{display:grid;justify-items:center;gap:10px;padding:28px 22px 22px;text-align:center}
+.fb-sent-icon{display:grid;place-items:center;width:44px;height:44px;border-radius:999px;background:#2f8f5a;color:#fff;font-size:22px;font-weight:700}
+.fb-sent p{margin:0}
+.fb-sent .fb-actions{justify-self:stretch;margin-top:8px}
+@media(max-width:520px){.fb-types{grid-template-columns:1fr}.fb-types button{flex-direction:row;align-items:center;flex-wrap:wrap;column-gap:8px}.fb-types small{flex-basis:100%}}
+
+@keyframes ask-in{from{opacity:0;transform:translateY(6px) scale(.98)}}

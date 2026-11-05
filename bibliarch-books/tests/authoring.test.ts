@@ -1,0 +1,10 @@
+import {it,expect} from 'vitest';
+import {readFileSync} from 'node:fs';
+import {seed,parseLibrary} from '../src/model';
+import * as model from '../src/model';
+it('starts a generic book with front matter and a lorem chapter',()=>{const b=seed().books[0];expect(b.title).toBe('Book name');expect(b.chapters[0].scenes[0].template).toBe('book-front');expect(b.chapters[1].title).toBe('Chapter name');expect(JSON.stringify(b.chapters[1])).toContain('Lorem ipsum')});
+it('changes the whole page style without replacing text or images',()=>{expect(model).toHaveProperty('applyPageTemplate');const s={...seed().books[0].chapters[0].scenes[0],image:{src:'data:image/png;base64,AA==',alt:'Original'}};for(const t of ['prose','color-art','book-front']){const next=(model as any).applyPageTemplate(s,t);expect(next.content).toEqual(s.content);expect(next.image).toEqual(s.image);expect(next.template).toBe(t)}});
+it('retains legacy v1 prose without injecting new defaults',()=>{const l=seed();l.books[0].title='Existing';delete l.books[0].chapters[0].scenes[0].template;expect(parseLibrary(JSON.stringify(l))).toEqual(l)});
+it('accepts supported image imports and rejects executable URLs',()=>{expect(model).toHaveProperty('validateImage');expect((model as any).validateImage({type:'image/png',size:100})).toBe('');expect((model as any).validateImage({type:'image/svg+xml',size:100})).not.toBe('')});
+it('rejects unsafe images and malformed custom paper sizes in backups',()=>{const l=seed();l.books[0].chapters[0].scenes[0].image={src:'javascript:alert(1)',alt:'bad'};expect(()=>parseLibrary(JSON.stringify(l))).toThrow();delete l.books[0].chapters[0].scenes[0].image;l.books[0].appearance.preset='Custom';l.books[0].appearance.widthMm=-5;expect(()=>parseLibrary(JSON.stringify(l))).toThrow()});
+it('uses a viewport shell and a dedicated un-clipped document scroller',()=>{const css=readFileSync('app/globals.css','utf8');expect(css).toMatch(/height:\s*100dvh/);expect(css).toMatch(/\.document-scroller\s*\{[^}]*min-height:\s*0/);expect(css).toMatch(/\.document-scroller\s*\{[^}]*overflow:\s*auto/)});

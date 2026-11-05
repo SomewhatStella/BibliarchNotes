@@ -1,0 +1,28 @@
+BIBLIARCH ORIGINAL FINE-LINE ORNAMENTS
+
+Source: src/original-ornaments.ts. Twelve original AI-assisted SVG vector
+compositions authored for Bibliarch in this implementation. No external artwork
+was downloaded, traced or copied. These are not Canva or Pinterest assets and
+are not affiliated with either service. The exact paths are embedded offline.
+
+Assets (builtin:bibliarch- prefix): willow-sprig, meadow-sprig, floral-corner,
+paired-flourish, crescent-garland, starlit-thread, diamond-thread, laurel-corners,
+snow-thread, ribbon-divider, fern-corner, dew-divider.
+
+CC0 1.0 Universal dedication (SPDX: CC0-1.0)
+To the extent copyright and related rights exist in these new compositions and
+can be waived by their contributors, they are dedicated to the public domain
+under CC0 1.0 Universal:
+https://creativecommons.org/publicdomain/zero/1.0/legalcode
+
+You may use, reproduce, modify, distribute and sell these ornaments, including
+in commercial printed books, without asking permission or providing attribution.
+No exclusive ownership, copyright eligibility, or non-infringement warranty is
+claimed. AI-assisted output may not qualify for copyright in every jurisdiction.
+CC0 does not grant third-party trademark, patent, privacy or publicity rights.
+
+This dedication covers only the twelve new bibliarch- compositions, not the
+application, uploaded artwork, fonts, legacy glyph ornaments, or Tabler assets.
+Legacy tabler- assets retain their original MIT copyright and permission notices;
+see ../tabler/LICENSE.txt and ../tabler/PROVENANCE.json. Saved IDs are unchanged.
+Fixed-position ornaments are omitted from reflowable EPUB by the application.

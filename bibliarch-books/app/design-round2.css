@@ -1,0 +1,66 @@
+/* ===== Design review round 2 fixes (judged against docs/design-rubric.md) ===== */
+/* G3: 16px grid gaps on the library */
+.library-home .book-presets,.library-home .saved-books{gap:16px!important}
+/* G4: one selection style — 2px accent border, light tint, check badge */
+.tool-dialog .import-looks button.on{background:var(--ui-tint)!important}
+html[data-ui-theme] .studio .outline .outline-page.selected,html[data-ui-theme] .studio .outline .chapter-row.selected>button{box-shadow:inset 0 0 0 2px var(--ui-accent)!important}
+html[data-ui-theme] .studio .outline .outline-page.selected:before{display:none!important}
+.goal-options{display:grid!important;grid-template-columns:repeat(5,1fr);gap:6px!important}
+.goal-options button[aria-pressed=true]{background:var(--ui-tint)!important;color:var(--ui-accent-dark)!important;border:2px solid var(--ui-accent)!important}
+html .book-design .bd-fonts>button,html .book-design .bd-types>button,html .book-design .bd-paper>button{position:relative}
+html .book-design .bd-fonts>button[aria-pressed=true],html .book-design .bd-types>button[aria-pressed=true],html .book-design .bd-paper>button[aria-pressed=true]{border:2px solid var(--ui-accent)!important;background:var(--ui-tint)!important;box-shadow:none!important}
+.page-gallery button[aria-pressed=true]{background:var(--ui-tint)!important;position:relative}
+.page-gallery button[aria-pressed=true]::after{content:"\2713";position:absolute;top:6px;right:6px;display:grid;place-items:center;width:16px;height:16px;border-radius:999px;background:var(--ui-accent);color:var(--ui-on-accent,#fff);font-size:10px;font-weight:700}
+/* G1/G2: small text */
+html .book-design .bd-fonts small{font-size:12px;color:var(--ui-subtle,#6b6358)}
+html .book-design .bd-fonts strong{font-size:13px}
+.decal-tray p,.decal-tray small,.image-library p{font-size:12px!important;color:var(--ui-subtle,#6b6358)!important}
+.page-gallery .page-type-cards button,.page-gallery .page-style-cards button,.page-gallery .page-type-cards span,.page-gallery .page-style-cards span{font-size:13px!important}
+.page-gallery p,.page-gallery small,.gallery-preview p{font-size:12px!important;color:var(--ui-subtle,#6b6358)}
+/* G5: dialog and panel headers */
+.page-gallery h2,html .studio .tool-content .tool-panel-heading strong{font-family:var(--ui-serif)!important;font-size:20px!important;font-weight:400!important;letter-spacing:0!important}
+.page-gallery>header>button,html .studio .tool-content .tool-panel-heading>button{display:grid;place-items:center;width:36px!important;height:36px!important;padding:0!important;border:0!important;border-radius:999px!important;background:transparent!important}
+/* Shared printer picker (Paper tab and Preview & export) */
+.printer-choice{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+.printer-choice>button{position:relative;display:flex;align-items:center;gap:12px;width:100%;padding:10px 40px 10px 12px;border:1px solid var(--ui-line);border-radius:10px;background:var(--ui-raised);text-align:left;cursor:pointer;font:inherit;color:var(--ui-ink)}
+.printer-choice>button.on{border:2px solid var(--ui-accent);background:var(--ui-tint);padding:9px 39px 9px 11px}
+.printer-icon{flex:none;color:var(--ui-accent-dark)}
+.printer-text{display:flex;flex-direction:column;gap:2px}
+.printer-text strong{font-size:13px}
+.printer-text small{font-size:12px;line-height:1.4;color:var(--ui-subtle,#6b6358)}
+.printer-choice .bd-check-badge{top:50%;right:12px;transform:translateY(-50%);width:18px;height:18px}
+/* C8.4: nothing faded or hidden under the panel footer */
+html .book-design .bd-scroll{mask-image:none;padding-bottom:72px}
+/* C9.1: sizes drawn larger, badge inside the card */
+html .book-design .bd-paper-shape{width:64px;height:84px}
+html .book-design .bd-paper{row-gap:8px;padding-top:0}
+html .book-design .bd-paper>button{padding-top:22px!important}
+.bd-popular{top:6px!important;left:6px!important;transform:none!important;font-size:12px}
+/* C9.4: ornaments — style chips and a 2-column grid of art */
+.decal-chips{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 12px}
+.decal-chips button{padding:6px 12px;border:1px solid var(--ui-line);border-radius:999px;background:var(--ui-raised);font:inherit;font-size:13px;cursor:pointer;color:var(--ui-ink)}
+.decal-chips button[aria-pressed=true]{border:2px solid var(--ui-accent);background:var(--ui-tint);padding:5px 11px;color:var(--ui-accent-dark);font-weight:600}
+.decal-tray{display:grid!important;grid-template-columns:1fr 1fr;gap:8px;align-content:start}.decal-tray[hidden]{display:none!important}
+.decal-tray>:not(button){grid-column:1/-1}
+.decal-tray>button{display:flex!important;flex-direction:column;align-items:center;justify-content:center;gap:6px;aspect-ratio:1;padding:10px 6px!important}
+.decal-tray>button img{width:82%!important;height:auto!important;max-height:64%;object-fit:contain}
+.decal-tray>button span{font-size:12px;line-height:1.25;text-align:center}
+/* B8.7: tablet toolbar — size, font and alignment move into More */
+.narrow-tools{display:none}
+html[data-ui-theme] .studio .format-row .wide-tools{display:contents}
+@media (max-width:1100px){
+ html[data-ui-theme] .studio .format-row .wide-tools{display:none}
+ .narrow-tools{display:flex;flex-wrap:wrap;gap:8px;width:100%;padding-bottom:10px;margin-bottom:4px;border-bottom:1px solid var(--ui-line)}
+ .narrow-align{display:flex;gap:4px}
+ html[data-ui-theme] .studio .format-row label[title="View"],html[data-ui-theme] .studio .format-row select[aria-label="Zoom"]{display:none}
+}
+/* B9.3 / B10.1: focus bar is solid, clear of the page, and only shows when the mouse moves */
+.focus-bar{background:#2b2416f5!important;opacity:0!important;pointer-events:none;transition:opacity .25s}
+.focus-bar.shown,.focus-bar:focus-within{opacity:1!important;pointer-events:auto}
+html.books-focus .studio.focus-mode .document-scroller{padding-bottom:96px}
+/* Ornaments panel fit: the old inline tray styles made every button full-width */
+.decal-tray{grid-template-columns:repeat(2,minmax(0,1fr))!important;min-width:0;max-width:100%;padding:0!important;background:transparent!important}
+.decal-tray>button{margin:0!important;width:auto!important;min-width:0}
+.decal-tray .decal-chips button{display:inline-flex!important;width:auto!important;margin:0!important;padding:5px 11px!important;aspect-ratio:auto;cursor:pointer;touch-action:auto}
+.decal-tray .decal-chips button[aria-pressed=true]{padding:4px 10px!important}
+html .studio .tool-content{overflow-x:hidden}

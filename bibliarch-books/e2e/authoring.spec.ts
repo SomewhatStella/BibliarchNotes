@@ -1,0 +1,27 @@
+import {test,expect} from './editor-fixture';
+test.use({viewport:{width:1440,height:900}});
+test('fixed Docs chrome, whole-page styles, image import and persistent text',async({page})=>{
+ await page.goto('/books');await page.getByLabel('Book title',{exact:true}).waitFor();
+ await expect(page.getByLabel('Book title',{exact:true})).toHaveValue('Book name');
+ const box=await page.locator('.paper').first().boundingBox();const footer=await page.locator('.page-footer').first().boundingBox();expect(footer!.y).toBeGreaterThan(box!.y+box!.height-100);
+ const toolbar=page.locator('.format-row');const before=await toolbar.boundingBox();
+ await page.locator('.document-scroller').evaluate(e=>e.scrollTop=600);
+ expect((await toolbar.boundingBox())!.y).toBe(before!.y);
+ expect(await page.evaluate(()=>({height:document.body.scrollHeight,viewport:innerHeight,y:scrollY}))).toEqual({height:900,viewport:900,y:0});
+ await page.getByRole('button',{name:'Page styles ▾'}).click();
+ const storedContent=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('bibliarch-books-v1')!).books[0].chapters[0].scenes[0].content);
+ const original=await storedContent();
+ expect(JSON.stringify(original)).toContain('Author name');
+ await page.getByRole('button',{name:'color art',exact:true}).click();
+ await expect(page.locator('.paper').first()).toHaveClass(/template-color-art/);
+ await expect(page.locator('.paper').first().getByRole('textbox',{name:'Manuscript',includeHidden:true})).toHaveCount(0);
+ await expect(page.locator('.paper').first()).not.toContainText('Author name');
+ await expect.poll(storedContent).toEqual(original);
+ await page.getByRole('button',{name:'book front',exact:true}).click();
+ await expect(page.locator('.paper').first()).toContainText('Author name');
+ await expect.poll(storedContent).toEqual(original);
+ await page.getByRole('button',{name:'Import / edit page image'}).click();
+ await page.getByLabel('Import page image').setInputFiles({name:'pixel.png',mimeType:'image/png',buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=','base64')});
+ await expect(page.locator('.paper img')).toHaveAttribute('alt','pixel.png');
+ await page.reload();await expect(page.locator('.paper img')).toHaveAttribute('alt','pixel.png');
+});
