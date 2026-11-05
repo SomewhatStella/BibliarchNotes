@@ -26,7 +26,7 @@ export function CoverView({render, view = 'whole', guides = false, className, fi
     ro.observe(box.current); return () => ro.disconnect();
   }, [fixed]);
   const b = BLEED_MM, w = render.trimW, s = render.spine, H = parts.height;
-  const region = view === 'front' ? {x: b + w + s, w: w + b} : view === 'back' ? {x: 0, w: w + b} : view === 'spine' ? {x: b + w + s / 2 - (s / 2 + Math.min(w * 0.3, 40)), w: s + 2 * Math.min(w * 0.3, 40)} : {x: 0, w: parts.width};
+  const region = view === 'front' ? {x: b + w + s, w: w + b} : view === 'back' ? {x: 0, w: w + b} : view === 'spine' ? {x: b + w, w: s} : {x: 0, w: parts.width}; // spine view: just the spine, none of the front or back
   const scale = size.w && size.h ? Math.min(size.w / (region.w * PX), size.h / (H * PX)) : 0;
   return <div ref={box} className={`cover-view${className ? ' ' + className : ''}`} style={fixed ? {width: fixed.w, height: fixed.h} : undefined}>
     <div className="cover-window" style={{width: region.w * PX * scale, height: H * PX * scale}}>
@@ -77,7 +77,10 @@ export default function CoverDesigner({book, pages, busy, onChange, onAddImage, 
           {(['whole', 'front', 'spine', 'back'] as View[]).map(v => <button key={v} type="button" aria-pressed={view === v} onClick={() => setView(v)}>{{whole: 'Whole cover', front: 'Front', spine: 'Spine', back: 'Back'}[v]}</button>)}
           <label className="cover-guides"><input type="checkbox" checked={guides} onChange={e => setGuides(e.target.checked)}/> Print guides</label>
         </div>
-        <CoverView render={render} view={view} guides={guides} className="cover-preview"/>
+        <div className="cover-preview-wrap">
+          <CoverView render={render} view={view} guides={guides} className="cover-preview"/>
+          {view === 'spine' && g.spine < 3 && <p className="cover-thin-note">Your spine is only {g.spineIn.toFixed(3)} in wide, so it’s just a thin line for now. It gets wider as your book grows.</p>}
+        </div>
         <div className="cover-measure">
           <span><b>Cover file</b> {inch(g.width)} × {inch(g.height)} in</span>
           <span><b>Spine</b> {g.spineIn.toFixed(3)} in</span>
