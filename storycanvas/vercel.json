@@ -1,0 +1,12 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "services": {
+    "books": { "root": "books", "framework": "nextjs" },
+    "notes": { "root": "notes", "framework": "nextjs" }
+  },
+  "rewrites": [
+    { "source": "/notes", "destination": { "service": "notes" } },
+    { "source": "/notes/(.*)", "destination": { "service": "notes" } },
+    { "source": "/(.*)", "destination": { "service": "books" } }
+  ]
+}
