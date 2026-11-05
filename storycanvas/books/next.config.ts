@@ -7,7 +7,11 @@ const config: NextConfig = {
   // The PDF and cover routes run headless Chromium; keep these out of the bundler and
   // ship the serverless Chromium binary with those functions (used on Vercel).
   serverExternalPackages: ['@sparticuz/chromium', 'playwright-core', 'playwright'],
-  outputFileTracingIncludes: { '/api/pdf': ['./node_modules/@sparticuz/chromium/bin/**'], '/api/cover': ['./node_modules/@sparticuz/chromium/bin/**'] },
+  // playwright-core reads data files (e.g. browsers.json) at runtime that the bundler doesn't trace on its own.
+  outputFileTracingIncludes: {
+    '/api/pdf': ['./node_modules/@sparticuz/chromium/bin/**', './node_modules/playwright-core/**'],
+    '/api/cover': ['./node_modules/@sparticuz/chromium/bin/**', './node_modules/playwright-core/**'],
+  },
   // Isolate verification builds from a running studio's .next output.
   distDir: process.env.BIBLIARCH_BUILD_DIR || '.next',
   // Old storycanvas addresses (bookmarks, share links) now live under /notes.
