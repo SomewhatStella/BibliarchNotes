@@ -7,6 +7,7 @@ import Link from "next/link";
 import { BookOpen, Plus, LogOut, Shield, Mail, Check, X, Settings } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { storyTemplates } from "@/lib/story-templates";
+import { tidyTemplateNodes } from "@/lib/board-templates";
 import { signOut } from "@/lib/auth/actions";
 import { getMyInvitations, acceptInvitation, declineInvitation, type MyInvitation } from "@/lib/collaboration";
 import type { Story } from "@/lib/types";
@@ -88,8 +89,9 @@ export default function Dashboard({ userId, username }: { userId: string; userna
     const template = storyTemplates.find((t) => t.id === templateId);
     if (template && template.nodes.length) {
       const rows = [
-        { story_id: data.id, canvas_type: "main", nodes: template.nodes, connections: template.connections },
-        ...Object.entries(template.subCanvases ?? {}).map(([canvas_type, c]) => ({ story_id: data.id, canvas_type, nodes: c.nodes, connections: c.connections })),
+        // Tidied for the new Notes card sizes, and without linking arrows.
+        { story_id: data.id, canvas_type: "main", nodes: tidyTemplateNodes(template.nodes), connections: [] },
+        ...Object.entries(template.subCanvases ?? {}).map(([canvas_type, c]) => ({ story_id: data.id, canvas_type, nodes: tidyTemplateNodes(c.nodes), connections: [] })),
       ];
       const { error: tplError } = await supabase.from("canvas_data").upsert(rows as never, { onConflict: "story_id,canvas_type" });
       if (tplError) setError("The story was made, but its template couldn't be added. You can still use it as a blank story.");

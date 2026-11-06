@@ -449,7 +449,14 @@ function TableBody({ node, actions, showControls }: { node: StoryNode; actions: 
   return (
     <div className="relative flex h-full flex-col">
       <div className="scrollbar-thin flex-1 overflow-auto">
-        <table className="h-full w-full flex-none border-collapse text-[11.5px]">
+        <table className="h-full w-full flex-none border-collapse text-[11.5px]" style={node.columnWidths ? { tableLayout: "fixed" } : undefined}>
+        {/* Saved column widths (percent, as storycanvas stored them); the last col is the row-delete control. */}
+        {node.columnWidths && (
+          <colgroup>
+            {columns.map((c) => <col key={c} style={{ width: `${node.columnWidths![c] ?? 100 / columns.length}%` }} />)}
+            <col style={{ width: 24 }} />
+          </colgroup>
+        )}
         {/* Template tables (e.g. a character's details) use internal names like col1/col2; storycanvas never showed those as headings. */}
         {(showControls || !columns.every((c) => /^col\d+$/.test(c))) && node.settings?.show_header_row !== false && (
         <thead className="h-7">
