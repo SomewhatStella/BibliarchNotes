@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { BookOpen, Plus, LogOut, Shield, Mail, Check, X, Settings } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { storyTemplates } from "@/lib/story-templates";
 import { signOut } from "@/lib/auth/actions";
 import { getMyInvitations, acceptInvitation, declineInvitation, type MyInvitation } from "@/lib/collaboration";
 import type { Story } from "@/lib/types";
@@ -15,6 +16,7 @@ export default function Dashboard({ userId, username }: { userId: string; userna
   const [stories, setStories] = useState<Story[] | null>(null);
   const [creating, setCreating] = useState(false);
   const [title, setTitle] = useState("");
+  const [templateId, setTemplateId] = useState("blank");
   const [error, setError] = useState<string | null>(null);
   const [invitations, setInvitations] = useState<MyInvitation[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -81,6 +83,16 @@ export default function Dashboard({ userId, username }: { userId: string; userna
     if (error) {
       setError(error.message);
       return;
+    }
+    // Same as storycanvas: a template's boards are written before the story opens.
+    const template = storyTemplates.find((t) => t.id === templateId);
+    if (template && template.nodes.length) {
+      const rows = [
+        { story_id: data.id, canvas_type: "main", nodes: template.nodes, connections: template.connections },
+        ...Object.entries(template.subCanvases ?? {}).map(([canvas_type, c]) => ({ story_id: data.id, canvas_type, nodes: c.nodes, connections: c.connections })),
+      ];
+      const { error: tplError } = await supabase.from("canvas_data").upsert(rows as never, { onConflict: "story_id,canvas_type" });
+      if (tplError) setError("The story was made, but its template couldn't be added. You can still use it as a blank story.");
     }
     router.push(`/story/${data.id}`);
   }
@@ -176,6 +188,21 @@ export default function Dashboard({ userId, username }: { userId: string; userna
                 placeholder="Story title…"
                 className="rounded-lg border border-ink-900/10 bg-white px-3 py-2 text-[15px] outline-none focus:border-bibliarch-blue"
               />
+              <div role="radiogroup" aria-label="Start from" className="flex flex-col gap-1.5">
+                {storyTemplates.map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={templateId === t.id}
+                    onClick={() => setTemplateId(t.id)}
+                    className={`rounded-lg border px-3 py-2 text-left ${templateId === t.id ? "border-bibliarch-blue bg-bibliarch-blue/8" : "border-ink-900/10 hover:border-ink-900/25"}`}
+                  >
+                    <span className="block text-[13px] font-semibold text-ink-900">{t.id === "blank" ? "Blank board" : "Story planner"}</span>
+                    <span className="block text-[11.5px] leading-snug text-ink-500">{t.id === "blank" ? "Start from nothing" : "Ready-made folders for characters, plot and world, a story-development list and a plot timeline"}</span>
+                  </button>
+                ))}
+              </div>
               <div className="flex gap-2">
                 <button onClick={createStory} className="flex-1 rounded-lg bg-bibliarch-blue px-3 py-2 text-[13px] font-semibold text-white">
                   Create

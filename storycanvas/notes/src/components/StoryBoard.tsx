@@ -22,6 +22,7 @@ import FeedbackModal from "./FeedbackModal";
 import PaletteEditor from "./PaletteEditor";
 import CustomTypesDialog from "./CustomTypesDialog";
 import { instantiateTemplate, snapshotInteriors, type CustomTemplate } from "@/lib/custom-templates";
+import { boardTemplateKey, instantiateBoardTemplate } from "@/lib/board-templates";
 
 type Crumb = { canvasType: string; label: string };
 
@@ -219,7 +220,17 @@ export default function StoryBoard({ storyId, storyTitle, userId }: { storyId: s
       if (node.type !== "folder" && node.type !== "character" && node.type !== "location" && !(node.type === "event" && node.linkedCanvasId)) return;
       // Legacy Storycanvas uses stable type-canvas-node IDs without links.
       const canvasType = node.linkedCanvasId || `${node.type}-canvas-${node.id}`;
+      const firstTime = !store.canvases[canvasType];
       store.ensureCanvas(canvasType);
+      // A board opened for the first time starts from its template (character profile, planner folders…).
+      if (firstTime && !readOnly) {
+        const key = boardTemplateKey(canvasType, node);
+        const filled = key ? instantiateBoardTemplate(key) : null;
+        if (filled) {
+          filled.nodes.forEach((n) => store.addNode(canvasType, n));
+          filled.connections.forEach((c) => store.addConnection(canvasType, c));
+        }
+      }
       setCrumbs((cr) => [...cr, { canvasType, label: node.text || node.title || "Untitled" }]);
       setSelectedId(null);
       setSelectedConnId(null);

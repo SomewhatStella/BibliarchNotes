@@ -160,7 +160,9 @@ export default function Studio({userId}:{userId:string}) {
   const pageNow=useCurrentPage(sequence.starts,sequence.total,`${home}|${lib?.activeBook}|${epoch}|${!!lib}`);
   const saveTimer=useRef<number|undefined>(undefined);
   const pageCache=useRef(new Map<string,{deps:unknown[];el:React.ReactNode}>());
-  const persistRef=useRef<()=>void>(()=>{});
+  const persistRef=useRef<()=>Promise<void>|void>(()=>{});
+  // True only when a save on this device actually failed (not merely "about to save").
+  const saveFailed=useRef(false);
   useEffect(()=>{
     const flush=()=>{if(saveTimer.current!==undefined)persistRef.current();};
     const hidden=()=>{if(document.visibilityState==='hidden')flush();};
@@ -182,14 +184,14 @@ export default function Studio({userId}:{userId:string}) {
     clearTimeout(saveTimer.current);
     saveTimer.current=window.setTimeout(persist,450);
   }
-  function persist(){
+  function persist():Promise<void>|void{
     clearTimeout(saveTimer.current);saveTimer.current=undefined;
     const l=latest.current;
     if(!l||blocked.current||deleting.current||!dirty.current)return;
     const generation = ++saveGeneration.current;
-    void store.current?.save(l).then(r=>{
+    return store.current?.save(l).then(r=>{
       if(generation!==saveGeneration.current || blocked.current)return;
-      dirty.current=!r.ok;
+      dirty.current=!r.ok;saveFailed.current=!r.ok;
       setStatus(r.ok ? "Saved on this device" : "Unsaved changes");
       setError(r.ok ? "" : /quota/i.test(r.error||"") ? "Your latest changes couldn’t be saved because this browser is out of storage space. Download a copy so nothing is lost, then try removing some large pictures." : `Your latest changes couldn’t be saved (${r.error}). Download a copy so nothing is lost.`);
     });
@@ -206,7 +208,7 @@ export default function Studio({userId}:{userId:string}) {
       if(existing){
         await storageStore.initializeLiveDraft(existing);
         if(cancelled)return;
-        dirty.current=true;
+        dirty.current=true;saveFailed.current=true;
         setStatus('Unsaved changes');
         setError('Your work is still here but hasn’t been saved yet. Try saving again, or download a copy.');
         setHydrated(true);
@@ -224,14 +226,14 @@ export default function Studio({userId}:{userId:string}) {
       latest.current=restored;setLib(restored);
       setHome(workspace.home);setZoom(workspace.zoom);setBookView(workspace.view);setSpread(workspace.spread);
       setStatus(result.warning?'Unsaved changes':'Saved on this device');
-      if(result.warning){dirty.current=true;setError(result.warning);}
+      if(result.warning){dirty.current=true;saveFailed.current=true;setError(result.warning);}
       // Reading a library must never rewrite it, including legacy normalization.
       if(result.fresh)commit(restored);
       setHydrated(true);
     } catch (e) {
       if(cancelled)return;
       if(latest.current){
-        dirty.current=true;
+        dirty.current=true;saveFailed.current=true;
         setStatus('Unsaved changes');
         setError(`Live draft retained; storage could not be initialized: ${(e as Error).message}. Download a backup or retry saving.`);
         return;
@@ -258,12 +260,26 @@ export default function Studio({userId}:{userId:string}) {
         );
       }
     };
+    // Leaving the page: start any pending save now and let the page go. Only warn when work could
+    // really be lost: a save on this device failed, or saving is paused by another tab.
     const before = (e: BeforeUnloadEvent) => {
-      if (dirty.current || blocked.current) {
+      if (dirty.current && !saveFailed.current && !blocked.current) { void persistRef.current(); return; }
+      if (blocked.current || (dirty.current && saveFailed.current)) {
         e.preventDefault();
         e.returnValue = "";
       }
     };
+    // Links to Home and Notes: finish saving first, then go (no "unsaved changes" prompt).
+    const leave = (e: MouseEvent) => {
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      const a = (e.target as HTMLElement | null)?.closest?.('a[href]') as HTMLAnchorElement | null;
+      if (!a || a.target === '_blank' || a.hasAttribute('download')) return;
+      const url = new URL(a.href, location.href);
+      if (url.origin !== location.origin || url.pathname.startsWith('/books') || !dirty.current || blocked.current || saveFailed.current) return;
+      e.preventDefault();
+      void Promise.resolve(persistRef.current()).finally(() => location.assign(url.href));
+    };
+    document.addEventListener("click", leave, true);
     window.addEventListener("storage", storage);
     window.addEventListener("beforeunload", before);
     let last = "";
@@ -287,6 +303,7 @@ export default function Studio({userId}:{userId:string}) {
       clearInterval(timer);
       window.removeEventListener("storage", storage);
       window.removeEventListener("beforeunload", before);
+      document.removeEventListener("click", leave, true);
     };
   }, []);
   useEffect(()=>{
@@ -642,7 +659,7 @@ export default function Studio({userId}:{userId:string}) {
       await storageStore.initializeLiveDraft(latest.current);
       // Initialization is asynchronous: save the current draft, not its snapshot.
       if(!blocked.current && latest.current)commit(latest.current);
-    }catch(e){dirty.current=true;setStatus('Unsaved changes');setError(`Not saved: ${(e as Error).message}. Download a JSON backup now.`);}
+    }catch(e){dirty.current=true;saveFailed.current=true;setStatus('Unsaved changes');setError(`Not saved: ${(e as Error).message}. Download a JSON backup now.`);}
   }
   const atRisk = dirty.current || blocked.current;
   const recovery = error ? <div className="error" role="alert"><span>{error}</span>{atRisk&&<button onClick={backup}>Download a copy</button>}{atRisk&&!blocked.current&&<button onClick={()=>void retrySaving()}>Try saving again</button>}{blocked.current&&<button onClick={()=>void downloadStored()}>Download saved data</button>}<button onClick={()=>setError('')}>Dismiss</button></div> : null;

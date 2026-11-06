@@ -58,7 +58,8 @@ export default function CloudPanel({library,userId,deviceFresh,onLoad,onStatus}:
   setPending(true);
   void run(async()=>{const snapshot=structuredClone(live.current),p=await client.saveProject(current.id,current.version,snapshot);if(alive.current)accept(p,JSON.stringify(snapshot));});
  },1000);return()=>clearTimeout(timer);},[library,current,paused,busy,changed,baseline]);
- useEffect(()=>{const before=(e:BeforeUnloadEvent)=>{if(changed||busy){e.preventDefault();e.returnValue='';}};window.addEventListener('beforeunload',before);return()=>window.removeEventListener('beforeunload',before);},[changed,busy]);
+ // No leave-page warning for the account copy: the work is always saved on this device first, and the
+ // account copy catches up on the next visit. (The device save has its own warning for real failures.)
  if(!paused)return null;
  return <div className="cloud-notice"><span role="status">{label}</span>{paused&&<button disabled={busy} onClick={()=>void run(connect)}>Try again</button>}{choices.map(p=><button disabled={busy} key={p.id} onClick={async()=>{if(await askConfirm({title:`Open ${p.name}?`,message:'This replaces the draft you’re looking at. A recovery copy is kept first.',confirmLabel:'Open'}))void run(()=>open(p.id,true));}}>Open {p.name}</button>)}</div>;
 }

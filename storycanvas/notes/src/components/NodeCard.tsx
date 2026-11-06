@@ -450,6 +450,8 @@ function TableBody({ node, actions, showControls }: { node: StoryNode; actions: 
     <div className="relative flex h-full flex-col">
       <div className="scrollbar-thin flex-1 overflow-auto">
         <table className="h-full w-full flex-none border-collapse text-[11.5px]">
+        {/* Template tables (e.g. a character's details) use internal names like col1/col2; storycanvas never showed those as headings. */}
+        {(showControls || !columns.every((c) => /^col\d+$/.test(c))) && node.settings?.show_header_row !== false && (
         <thead className="h-7">
           <tr>
             {columns.map((col) => (
@@ -458,6 +460,7 @@ function TableBody({ node, actions, showControls }: { node: StoryNode; actions: 
             <th className="w-6 border-b" style={{ borderColor: accent, background: `color-mix(in oklab, ${accent} 16%, var(--editor-card-bg, white))` }} />
           </tr>
         </thead>
+        )}
         <tbody>
           {rows.map((row, r) => (
             <tr key={r} className="group" style={{ background: r % 2 ? "rgba(0,0,0,0.018)" : "transparent" }}>
