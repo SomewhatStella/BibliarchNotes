@@ -1,4 +1,6 @@
 import './home.css';
+import './tutorials.css';
+import HomeTutorials from '../src/HomeTutorials';
 
 export default function Home() {
   return (
@@ -56,6 +58,8 @@ export default function Home() {
             </article>
           </div>
         </section>
+
+        <HomeTutorials />
 
         <section className="welcome-game" id="coming-soon" aria-labelledby="coming-title">
           <header className="welcome-section-heading">

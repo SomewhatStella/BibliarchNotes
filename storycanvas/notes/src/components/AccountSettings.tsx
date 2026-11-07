@@ -134,23 +134,29 @@ function DeleteAccount({ userId }: { userId: string }) {
   const [typed, setTyped] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const confirmed = typed.trim().toUpperCase() === "DELETE";
   async function remove(e: React.FormEvent) {
     e.preventDefault();
-    if (typed !== "DELETE") return setError("Type DELETE in capitals to confirm.");
+    if (!confirmed) return setError("Type DELETE to confirm.");
     setBusy(true);
     setError(null);
     const supabase = createClient();
-    // Same order as storycanvas: your stories, your profile, the projects shared with you, then the account itself.
-    await supabase.from("stories").delete().eq("user_id", userId);
-    await supabase.from("profiles").delete().eq("id", userId);
-    await supabase.from("story_collaborators").delete().eq("user_id", userId);
+    // One database call removes stories, boards, profile, shared-project memberships, Books
+    // projects and the sign-in together, so a failure never leaves a half-deleted account
+    // (the old version deleted the profile first and then could fail on the account itself).
     const { error } = await supabase.rpc("delete_own_account" as never);
     if (error) {
+      console.error("delete_own_account failed", error);
       setBusy(false);
       return setError("Your account couldn’t be deleted just now. Please try again, or send us feedback.");
     }
+    // Books keeps this account's drafts in this browser under the account id; clear only those.
+    try {
+      for (const key of Object.keys(localStorage)) if (key.endsWith(`:account:${userId}`)) localStorage.removeItem(key);
+      indexedDB.deleteDatabase(`bibliarch-books:account:${userId}`);
+    } catch { /* storage blocked: nothing to clear */ }
     await supabase.auth.signOut();
-    window.location.assign("/");
+    window.location.assign("/?deleted=1");
   }
   return (
     <section className="account-card account-danger">
@@ -164,7 +170,7 @@ function DeleteAccount({ userId }: { userId: string }) {
           <Status error={error} ok={null} />
           <div className="account-row">
             <button type="button" className="account-secondary" onClick={() => { setOpen(false); setTyped(""); setError(null); }}>Cancel</button>
-            <button className="account-danger-button" disabled={busy || typed !== "DELETE"}>{busy ? "Deleting…" : "Delete forever"}</button>
+            <button className="account-danger-button" disabled={busy || !confirmed}>{busy ? "Deleting…" : "Delete forever"}</button>
           </div>
         </form>
       )}

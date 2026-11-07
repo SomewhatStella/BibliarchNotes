@@ -1,25 +1,40 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Users, MessageSquare, Loader2, ShieldAlert } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 import { useAdminGate } from "@/lib/use-admin-gate";
 
 export default function AdminPage() {
   const gate = useAdminGate();
+  const [users, setUsers] = useState<number | null>(null);
+  const [open, setOpen] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (gate !== "admin") return;
+    const supabase = createClient();
+    supabase.from("profiles").select("*", { count: "exact", head: true }).then(({ count }) => setUsers(count ?? null));
+    supabase
+      .from("feedback")
+      .select("*", { count: "exact", head: true })
+      .in("status", ["new", "reviewing", "in_progress"])
+      .then(({ count }) => setOpen(count ?? null));
+  }, [gate]);
 
   if (gate === "checking") {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <Loader2 size={22} className="animate-spin text-ink-500" />
+      <div className="admin-center">
+        <Loader2 size={22} className="animate-spin" />
       </div>
     );
   }
   if (gate === "denied") {
     return (
-      <div className="flex h-screen flex-col items-center justify-center gap-2 text-center">
-        <ShieldAlert size={28} className="text-bibliarch-rose" />
-        <p className="font-display text-[16px] font-semibold text-ink-900">Not available</p>
-        <Link href="/dashboard" className="mt-2 text-[13px] text-bibliarch-blue">
+      <div className="admin-center">
+        <ShieldAlert size={28} className="admin-danger-ink" />
+        <p className="admin-h2">Not available</p>
+        <Link href="/dashboard" className="admin-back">
           Back to your stories
         </Link>
       </div>
@@ -27,25 +42,25 @@ export default function AdminPage() {
   }
 
   return (
-    <main className="min-h-screen bg-parchment-50 px-6 py-10">
-      <div className="mx-auto max-w-2xl">
-        <Link href="/dashboard" className="mb-6 flex items-center gap-1.5 text-[13px] text-ink-500 hover:text-ink-900">
-          <ArrowLeft size={14} /> Back
+    <div className="admin-page">
+      <Link href="/dashboard" className="admin-back">
+        <ArrowLeft size={14} /> Your stories
+      </Link>
+      <h1 className="admin-title">Admin</h1>
+      <div className="admin-home-grid">
+        <Link href="/admin/users" className="admin-home-card">
+          <Users size={22} />
+          <span className="admin-home-value">{users === null ? "…" : users.toLocaleString()}</span>
+          <span className="admin-h2">Users</span>
+          <span className="admin-muted">Everyone who signed up, who’s active, and your markings</span>
         </Link>
-        <h1 className="mb-6 font-display text-2xl font-semibold text-ink-900">Admin</h1>
-        <div className="grid grid-cols-2 gap-4">
-          <Link href="/admin/users" className="emboss flex flex-col gap-2 rounded-2xl p-5 hover:shadow-card-hover">
-            <Users size={22} className="text-bibliarch-blue" />
-            <p className="font-display text-[15px] font-semibold text-ink-900">Users</p>
-            <p className="text-[12.5px] text-ink-500">Registered accounts</p>
-          </Link>
-          <Link href="/admin/feedback" className="emboss flex flex-col gap-2 rounded-2xl p-5 hover:shadow-card-hover">
-            <MessageSquare size={22} className="text-bibliarch-blue" />
-            <p className="font-display text-[15px] font-semibold text-ink-900">Feedback</p>
-            <p className="text-[12.5px] text-ink-500">What people have sent in</p>
-          </Link>
-        </div>
+        <Link href="/admin/feedback" className="admin-home-card">
+          <MessageSquare size={22} />
+          <span className="admin-home-value">{open === null ? "…" : `${open.toLocaleString()} open`}</span>
+          <span className="admin-h2">Feedback</span>
+          <span className="admin-muted">Bugs and suggestions from Notes, Books and Home</span>
+        </Link>
       </div>
-    </main>
+    </div>
   );
 }

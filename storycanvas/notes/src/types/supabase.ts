@@ -14,9 +14,10 @@ export interface Database {
           username: string | null;
           created_at: string;
           is_admin: boolean | null;
+          classification: string | null;
         };
-        Insert: { id: string; email?: string | null; username?: string | null; created_at?: string; is_admin?: boolean | null };
-        Update: { id?: string; email?: string | null; username?: string | null; created_at?: string; is_admin?: boolean | null };
+        Insert: { id: string; email?: string | null; username?: string | null; created_at?: string; is_admin?: boolean | null; classification?: string | null };
+        Update: { id?: string; email?: string | null; username?: string | null; created_at?: string; is_admin?: boolean | null; classification?: string | null };
         Relationships: [];
       };
       stories: {
