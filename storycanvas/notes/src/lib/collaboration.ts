@@ -157,12 +157,11 @@ export async function transferOwnership(storyId: string, newOwnerId: string): Pr
 export async function searchUsers(query: string): Promise<{ id: string; username: string | null; email: string | null }[]> {
   if (!query || query.length < 2) return [];
   const supabase = createClient();
-  const { data: auth } = await supabase.auth.getUser();
-  const isEmail = query.includes("@");
-  const base = supabase.from("profiles").select("id, username, email").neq("id", auth.user?.id ?? "").limit(10);
-  const { data, error } = isEmail ? await base.ilike("email", query) : await base.ilike("username", `%${query}%`);
+  // Profiles are private; this server-side search only reveals an email when
+  // the exact address is typed (supabase/005_private_profiles.sql).
+  const { data, error } = await supabase.rpc("search_users" as never, { q: query } as never);
   if (error) throw error;
-  return data ?? [];
+  return (data ?? []) as { id: string; username: string | null; email: string | null }[];
 }
 
 export async function inviteUser(storyId: string, userId: string, role: "editor" | "viewer" = "editor"): Promise<void> {
