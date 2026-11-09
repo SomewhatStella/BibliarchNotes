@@ -16,10 +16,26 @@ export default function ResetPasswordPage() {
   useEffect(() => {
     document.title = "Choose a new password — Bibliarch Notes";
     const supabase = createClient();
-    // The link signs you in for this one purpose; the client picks the code up from the address.
-    const code = new URLSearchParams(window.location.search).get("code");
+    // The link signs you in for this one purpose. Emails sent now carry the session after the #
+    // (works on any device); older ones carry a ?code= that only works in the browser that asked.
+    const query = new URLSearchParams(window.location.search);
+    const hash = new URLSearchParams(window.location.hash.slice(1));
+    const code = query.get("code");
+    const access_token = hash.get("access_token");
+    const refresh_token = hash.get("refresh_token");
+    if (query.get("error_code") || hash.get("error_code")) {
+      setReady("expired");
+      return;
+    }
+    if (window.location.hash) window.history.replaceState(null, "", window.location.pathname + window.location.search);
     // A used or broken link can leave the auth calls waiting, so give up after 8 seconds.
-    const check = (code ? supabase.auth.exchangeCodeForSession(code).then(() => undefined).catch(() => undefined) : Promise.resolve())
+    const signIn: Promise<unknown> = access_token && refresh_token
+      ? supabase.auth.setSession({ access_token, refresh_token })
+      : code
+        ? supabase.auth.exchangeCodeForSession(code)
+        : Promise.resolve();
+    const check = signIn
+      .catch(() => undefined)
       .then(() => supabase.auth.getSession())
       .then(({ data }): "ok" | "expired" => (data.session ? "ok" : "expired"))
       .catch((): "expired" => "expired");

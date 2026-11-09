@@ -6,6 +6,7 @@ import { ArrowLeft } from "lucide-react";
 import OverviewNavigation from "./OverviewNavigation";
 import { createClient } from "@/lib/supabase/client";
 import { authErrorMessage } from "@/lib/auth/errors";
+import { sendPasswordResetEmail } from "@/lib/auth/recovery";
 
 /*
  * Account settings, as storycanvas had them: see your details, change your username or
@@ -88,12 +89,23 @@ function UsernameForm({ userId, current, onSaved }: { userId: string; current: s
 }
 
 function PasswordForm({ email }: { email: string }) {
+  const [linkState, setLinkState] = useState<"idle" | "sending" | "sent">("idle");
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [again, setAgain] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
+  async function emailLink() {
+    setLinkState("sending");
+    setOk(null);
+    setError(null);
+    const { error } = await sendPasswordResetEmail(email);
+    if (error) {
+      setError(authErrorMessage(error));
+      setLinkState("idle");
+    } else setLinkState("sent");
+  }
   async function save(e: React.FormEvent) {
     e.preventDefault();
     setOk(null);
@@ -107,7 +119,8 @@ function PasswordForm({ email }: { email: string }) {
     const check = await supabase.auth.signInWithPassword({ email, password: current });
     if (check.error) {
       setBusy(false);
-      return setError("Your current password isn’t right.");
+      const wrong = check.error.code === "invalid_credentials" || check.error.message.toLowerCase().includes("invalid login");
+      return setError(wrong ? "Your current password isn’t right." : authErrorMessage(check.error));
     }
     const { error } = await supabase.auth.updateUser({ password: next });
     setBusy(false);
@@ -125,6 +138,12 @@ function PasswordForm({ email }: { email: string }) {
         <Status error={error} ok={ok} />
         <button className="account-primary" disabled={busy}>{busy ? "Saving…" : "Change password"}</button>
       </form>
+      <p className="account-forgot">
+        Don’t know your current password?{" "}
+        <button type="button" className="account-link" disabled={linkState !== "idle"} onClick={emailLink}>
+          {linkState === "sent" ? "Reset link sent. Check your email (and spam)." : linkState === "sending" ? "Sending…" : "Email me a reset link"}
+        </button>
+      </p>
     </section>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { sharedAuth } from "./shared-auth";
+import { sendPasswordResetEmail } from "./shared-auth";
 
 
 /*
@@ -19,9 +19,7 @@ export default function ForgotPassword() {
     e.preventDefault();
     setState("sending");
     setError(null);
-    const { error } = await sharedAuth().auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
+    const { error } = await sendPasswordResetEmail(email.trim());
     if (error) {
       setError(error.message || "The reset email couldn’t be sent. Please try again in a minute.");
       setState("idle");

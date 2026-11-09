@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { sendPasswordResetEmail } from "@/lib/auth/recovery";
 import { authErrorMessage } from "@/lib/auth/errors";
 
 /*
@@ -19,9 +19,7 @@ export default function ForgotPassword() {
     e.preventDefault();
     setState("sending");
     setError(null);
-    const { error } = await createClient().auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
+    const { error } = await sendPasswordResetEmail(email.trim());
     if (error) {
       setError(authErrorMessage(error));
       setState("idle");

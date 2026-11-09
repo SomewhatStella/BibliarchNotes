@@ -68,3 +68,6 @@ html[data-ui-theme=dark] .account-error{color:#f2a7b0}
 .account-ok{color:#2f7a4d;background:color-mix(in srgb,#2f8f5a 14%,transparent)}
 html[data-ui-theme=dark] .account-ok{color:#9be0b6}
 @media(max-width:520px){.account-details div{grid-template-columns:1fr;gap:2px}.account-card{padding:18px}}
+.account-forgot{margin:12px 0 0;color:var(--ui-muted,#7a6e57);font-size:14px;line-height:1.5}
+.account-link{padding:0;border:0;background:none;color:var(--ui-accent,#4a6fa5);font:inherit;text-decoration:underline;cursor:pointer}
+.account-link:disabled{color:inherit;text-decoration:none;cursor:default}
