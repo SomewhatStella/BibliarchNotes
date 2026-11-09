@@ -9,6 +9,8 @@ import { ThemeBootstrap } from "../components/ThemeToggle";
 export const metadata: Metadata = {
   title: { default: "Bibliarch Notes", template: "%s — Bibliarch Notes" },
   description: "Plan your characters, places and plot on one connected board. Part of Bibliarch, a home for your stories.",
+  // These are app screens behind a login; the public page for search is bibliarch.com/note-taking-app.
+  robots: { index: false, follow: true },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

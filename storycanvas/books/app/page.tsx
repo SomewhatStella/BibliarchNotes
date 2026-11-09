@@ -1,10 +1,24 @@
 import './home.css';
 import './tutorials.css';
 import HomeTutorials from '../src/HomeTutorials';
+import {JsonLd, SiteLinks, SITE_URL} from '../src/SeoPage';
+
+export const metadata = {alternates: {canonical: '/'}};
+
+const free = {'@type': 'Offer', price: '0', priceCurrency: 'USD'};
+const structuredData = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {'@type': 'WebSite', '@id': SITE_URL + '/#website', url: SITE_URL, name: 'Bibliarch', description: 'Free online tools for planning stories and original characters, and for writing and designing books.'},
+    {'@type': 'WebApplication', name: 'Bibliarch Notes', url: SITE_URL + '/note-taking-app', applicationCategory: 'ProductivityApplication', operatingSystem: 'Any (web browser)', offers: free, description: 'A visual note-taking board for planning stories, fictional worlds and original characters.'},
+    {'@type': 'WebApplication', name: 'Bibliarch Books', url: SITE_URL + '/book-creator', applicationCategory: 'DesignApplication', operatingSystem: 'Any (web browser)', offers: free, description: 'An online book creator for writing and designing books, with print-ready PDF and EPUB export.'},
+  ],
+};
 
 export default function Home() {
   return (
     <main className="site-home welcome-home">
+      <JsonLd data={structuredData} />
       {/* The original Storycanvas home leads with a centered introduction and
           dashboard action, then explains the tools before the game teaser. */}
       <section className="welcome-hero" aria-labelledby="home-title">
@@ -14,7 +28,7 @@ export default function Home() {
         <div className="welcome-inner">
           <p className="welcome-kicker">Bibliarch · Notes & Books</p>
           <h1 id="home-title">Visual story planning.<span>For writers who think visually.</span></h1>
-          <p className="welcome-lead">Plan your characters, map their relationships, and build your story world. Then write and lay out the book.</p>
+          <p className="welcome-lead">A free home for note-taking, original characters and book creation. Plan your characters, map their relationships, and build your story world. Then write and lay out the book.</p>
           <div className="welcome-actions">
             <a className="welcome-button welcome-button-primary" href="/notes/dashboard">Open Notes <span aria-hidden="true">→</span></a>
             <a className="welcome-button" href="/books">Open Books <span aria-hidden="true">→</span></a>
@@ -82,9 +96,10 @@ export default function Home() {
             <a className="welcome-button" href="/books">Open Books <span aria-hidden="true">→</span></a>
           </div>
         </section>
+        <div className="welcome-footer-links"><SiteLinks /></div>
         <footer className="welcome-footer">
           <a href="/" className="welcome-footer-brand">Bibliarch</a>
-          <p>Books are saved in this browser. Download a backup to keep a copy.<br />Notes and Books don’t automatically sync.</p>
+          <p>Your work is saved to your account. Download a backup any time to keep a copy.<br />Notes and Books don’t automatically sync.</p>
           <a href="/notes/login">Sign in to Notes</a>
         </footer>
       </div>

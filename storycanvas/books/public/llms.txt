@@ -1,0 +1,25 @@
+# Bibliarch
+
+> Bibliarch (https://bibliarch.com) is a free website for writers and creators. It has two tools under one account: Notes, a visual note-taking board for planning stories, worlds and original characters (OCs), and Books, an online book creator that exports print-ready PDFs and EPUBs. It runs in the browser on computers, tablets and phones.
+
+Key facts:
+
+- Price: free to use. An account is required so work can be saved.
+- Platform: web only. Nothing to install. There is no offline app.
+- Publishing: Bibliarch makes the files. It does not sell or distribute books; users upload files to services like Amazon KDP or IngramSpark themselves. It is not affiliated with those services.
+
+## Tools
+
+- [Bibliarch Notes: visual note-taking app](https://bibliarch.com/note-taking-app): boards of text, sticky notes, characters, locations, events, lists, tables, images and relationship maps. Live collaboration with up to 10 people.
+- [Bibliarch Books: online book creator](https://bibliarch.com/book-creator): write on real book pages, design layout and cover, import .docx/.txt/Markdown, export PDF and EPUB, print checks for Amazon KDP and IngramSpark.
+- [OC tools](https://bibliarch.com/oc-tools): how to keep original characters organized with profile boards and relationship maps.
+
+## Free resources
+
+- [60 things to do with your OCs](https://bibliarch.com/oc-tools/things-to-do-with-your-ocs): writing, art and group ideas for original characters.
+- [OC profile template](https://bibliarch.com/oc-tools/oc-profile-template): a copy-and-paste character sheet.
+
+## Details
+
+- [About Bibliarch](https://bibliarch.com/about): what it is, who it suits, and when something else is a better fit.
+- [Full product description](https://bibliarch.com/llms-full.txt): the complete feature list as plain text.

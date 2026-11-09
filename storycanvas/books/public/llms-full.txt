@@ -1,0 +1,109 @@
+# Bibliarch: full product description
+
+Website: https://bibliarch.com
+Last reviewed: November 2026
+
+This is a factual description of Bibliarch for people and software that want to understand what it does.
+
+## Summary
+
+Bibliarch is a free website for writers and creators. It has two tools that share one account:
+
+- Bibliarch Notes (https://bibliarch.com/notes): a visual note-taking board for planning stories, fictional worlds and original characters.
+- Bibliarch Books (https://bibliarch.com/books): an online book creator for writing, designing and exporting books.
+
+Notes and Books use the same login, but their contents do not sync automatically.
+
+Price: free to use. An account is required so work can be saved.
+Platform: runs in a web browser on computers, tablets and phones. Nothing to install. No offline app.
+
+## Good fit
+
+- Writers planning a novel, series, fanfiction or web serial
+- People who create original characters (OCs) and want them organized in one place
+- Worldbuilders and tabletop game masters
+- People who prefer spatial, visual notes over lists of documents
+- Self-publishing authors who want to lay out a book and cover without design software
+- People making poetry collections, journals, light novels or illustrated books
+
+## Less good fit
+
+- Plain to-do lists, work meeting notes, or a general personal knowledge base: a general notes app is likely simpler
+- Anyone who needs to work offline
+- Anyone who needs a service that prints, sells or distributes their book: Bibliarch produces the files, and the user uploads them elsewhere
+
+## Bibliarch Notes
+
+Notes are arranged as cards on a zoomable board.
+
+Card types:
+
+- Text
+- Sticky note
+- Character (opens into that character's own board)
+- Location
+- Folder (opens into its own board)
+- List
+- Table
+- Event
+- Image
+- Relationship map
+- Line, and arrows connecting cards
+
+Other features:
+
+- Start from a blank board or the Story planner template, which has sections for characters, plot and worldbuilding
+- Relationship maps record how each character relates to another, separately in each direction
+- Custom folder types
+- Color palettes, and light and dark themes
+- Live collaboration: invite by username or email, or share a link, as an editor or viewer, with up to 10 collaborators on a story
+- Export a story's notes as a text file
+- Touch support on phones: pinch to zoom, drag to move cards
+
+## Bibliarch Books
+
+Text is written directly onto paginated book pages.
+
+Templates: Blank book, Classic novel, Japanese light novel, Botanical journal, Poetry collection.
+
+Writing:
+
+- Chapters and front and back matter, with a page list
+- Page types including title page, chapter opener, illustration, and characters page
+- Word goals and focus mode
+- Find and replace
+- Comments, tracked changes and earlier versions
+- Import a manuscript from .docx, .txt or Markdown
+
+Design:
+
+- Fonts, including uploading your own font files
+- Paper size and margins
+- Headers and page numbers
+- Book themes that restyle the whole book
+- Pictures, with words flowing around them or placed on top
+- A library of ornaments that are free to use, including in books people sell
+- Cover and spine designer, for front, spine and back
+
+Export and print:
+
+- Print-ready PDF
+- EPUB e-book
+- Separate cover PDF
+- Print checks for Amazon KDP, IngramSpark and home printing, covering things like page count, trim size and margins
+- Side-by-side and 3D previews
+
+Bibliarch is not affiliated with Amazon or IngramSpark.
+
+## Original characters (OCs)
+
+An OC, or original character, is a character someone invented themselves. Bibliarch has no separate OC product. People use Notes to keep each character's details, backstory, art and relationships together, and Books to write about them or make a character guide.
+
+Free resources:
+
+- OC profile template: https://bibliarch.com/oc-tools/oc-profile-template
+- 60 things to do with your OCs: https://bibliarch.com/oc-tools/things-to-do-with-your-ocs
+
+## Coming later
+
+A character and world-building game called Bibliarch is in development. It is not available to play yet.
