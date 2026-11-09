@@ -84,7 +84,10 @@ export default function CanvasView({
   onOpenInspector: (nodeId: string, anchor: { x: number; y: number }) => void;
 }) {
   const viewportRef = useRef<HTMLDivElement>(null);
-  const [zoom, setZoom] = useState(1);
+  // Cards are wider than a phone screen at full size, so phones start zoomed out.
+  const [zoom, setZoom] = useState(() => (typeof window !== "undefined" && window.innerWidth <= 700 ? 0.6 : 1));
+  const zoomRef = useRef(zoom);
+  zoomRef.current = zoom;
   const reportViewport = useCallback(() => {
     const vp = viewportRef.current;
     if (vp) onViewportChange?.({x: vp.scrollLeft / zoom, y: vp.scrollTop / zoom, width: vp.clientWidth / zoom, height: vp.clientHeight / zoom});
@@ -183,6 +186,80 @@ export default function CanvasView({
     },
     [zoom]
   );
+
+  // Touch. One finger scrolls the board natively. Pinch zooms. A finger on a selected card
+  // (or a line handle) feeds the same mouse handlers the desktop drag uses. A plain tap
+  // is left alone so the browser's own click still selects and opens things.
+  useEffect(() => {
+    const vp = viewportRef.current;
+    if (!vp) return;
+    const fire = (type: string, target: EventTarget, x: number, y: number) =>
+      target.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, clientX: x, clientY: y, button: 0, view: window }));
+    let pinch: { dist: number; zoom: number; worldX: number; worldY: number } | null = null;
+    let drag: { target: HTMLElement; x: number; y: number; active: boolean } | null = null;
+    const middle = (e: TouchEvent) => {
+      const [a, b] = [e.touches[0]!, e.touches[1]!];
+      return { x: (a.clientX + b.clientX) / 2, y: (a.clientY + b.clientY) / 2, dist: Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY) };
+    };
+    const start = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        if (drag?.active) fire("mouseup", window, drag.x, drag.y);
+        drag = null;
+        const m = middle(e), r = vp.getBoundingClientRect(), z = zoomRef.current;
+        pinch = { dist: m.dist, zoom: z, worldX: (m.x - r.left + vp.scrollLeft) / z, worldY: (m.y - r.top + vp.scrollTop) / z };
+        return;
+      }
+      if (e.touches.length !== 1) return;
+      const el = e.target as Element;
+      if (el.closest('input, textarea, select, button, [contenteditable="true"]')) return;
+      if (el.closest("[data-node-id][data-selected], [data-touch-drag]")) drag = { target: el as HTMLElement, x: e.touches[0]!.clientX, y: e.touches[0]!.clientY, active: false };
+    };
+    const move = (e: TouchEvent) => {
+      if (pinch && e.touches.length === 2) {
+        e.preventDefault();
+        const m = middle(e), r = vp.getBoundingClientRect(), p = pinch;
+        const next = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, (p.zoom * m.dist) / p.dist));
+        setZoom(next);
+        requestAnimationFrame(() => {
+          vp.scrollLeft = p.worldX * next - (m.x - r.left);
+          vp.scrollTop = p.worldY * next - (m.y - r.top);
+        });
+        return;
+      }
+      if (!drag || e.touches.length !== 1) return;
+      const t = e.touches[0]!;
+      if (!drag.active) {
+        if (Math.hypot(t.clientX - drag.x, t.clientY - drag.y) < 6) return;
+        drag.active = true;
+        fire("mousedown", drag.target, drag.x, drag.y);
+      }
+      e.preventDefault();
+      fire("mousemove", window, t.clientX, t.clientY);
+    };
+    const end = (e: TouchEvent) => {
+      if (e.touches.length < 2) pinch = null;
+      if (drag?.active && e.touches.length === 0) {
+        const t = e.changedTouches[0]!;
+        e.preventDefault();
+        fire("mouseup", window, t.clientX, t.clientY);
+      }
+      if (e.touches.length === 0) drag = null;
+    };
+    // iPhones send their own pinch gesture, which would zoom the whole page.
+    const block = (e: Event) => e.preventDefault();
+    vp.addEventListener("touchstart", start, { passive: true });
+    vp.addEventListener("touchmove", move, { passive: false });
+    vp.addEventListener("touchend", end, { passive: false });
+    vp.addEventListener("touchcancel", end, { passive: false });
+    vp.addEventListener("gesturestart", block);
+    return () => {
+      vp.removeEventListener("touchstart", start);
+      vp.removeEventListener("touchmove", move);
+      vp.removeEventListener("touchend", end);
+      vp.removeEventListener("touchcancel", end);
+      vp.removeEventListener("gesturestart", block);
+    };
+  }, []);
 
   const dropRef = useRef<{ id: string; kind: "list" | "board" } | null>(null);
   // Same rules as storycanvas: the dragged card's CENTER must land on the target (brushing an
@@ -459,7 +536,7 @@ export default function CanvasView({
                     <path d={d} style={{ stroke: color }} strokeWidth={(node.lineStyle?.width || 2) + (selected ? 1 : 0)} fill="none" strokeLinecap="round" markerEnd={`url(#line-head-${node.id})`} />
                     {selected && !readOnly && (["start", "middle", "end"] as const).map((h) => (
                       <circle key={h} cx={node.linePoints![h].x} cy={node.linePoints![h].y} r={7 / zoom} fill="#fff" style={{ stroke: color, cursor: "grab" }} strokeWidth={2 / zoom}
-                        className="pointer-events-auto" aria-label={`Drag the ${h} of the line`}
+                        className="pointer-events-auto" data-touch-drag aria-label={`Drag the ${h} of the line`}
                         onMouseDown={(e) => { e.stopPropagation(); beginLineDrag(node, h, e.clientX, e.clientY); }} />
                     ))}
                   </g>

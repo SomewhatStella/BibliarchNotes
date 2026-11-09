@@ -2,6 +2,9 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import StoryBoard from "@/components/StoryBoard";
 
+// The board has its own pinch-zoom; this also stops iPhones zooming the page when a card's text is tapped.
+export const viewport = { width: "device-width", initialScale: 1, maximumScale: 1 };
+
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createClient();

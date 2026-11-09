@@ -45,3 +45,13 @@ html[data-ui-theme='dark']:has(.notes-board-shell) .bg-ink-900\/30 { background-
 /* Floating board buttons (Delete line, Unlink): above every card, readable in light and dark. */
 .board-pill{z-index:60;background:#1f2633;color:#fff;border:1px solid #ffffff22}
 .board-pill:hover{background:#2e5aac}
+
+/* Touch: scroll with one finger, pinch handled in CanvasView, selected cards drag. */
+@media (pointer:coarse){
+  .canvas-ground{touch-action:pan-x pan-y}
+  [data-node-id][data-selected],[data-touch-drag]{touch-action:none}
+  [data-node-id] [title="Resize card"]{width:30px!important;height:30px!important;right:-15px!important;bottom:-15px!important}
+}
+@media (max-width:700px){
+  .notes-board-shell .canvas-ground+div button{min-width:36px;min-height:32px}
+}

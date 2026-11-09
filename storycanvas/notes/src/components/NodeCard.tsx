@@ -53,6 +53,11 @@ const TYPE_ADD_CHOICES: { type: NodeType; label: string }[] = [
   { type: "compact-text", label: "Sticky note" },
 ];
 
+const isTouch = () => typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
+// Whether the card was already selected when this finger came down (pressing selects it).
+let pressedSelected = false;
+const notePress = (e: { currentTarget: Element }) => { pressedSelected = !!e.currentTarget.closest("[data-selected]"); };
+
 export default function NodeCard({
   node,
   allNodes,
@@ -116,6 +121,7 @@ export default function NodeCard({
   return (
     <div
       data-node-id={node.id}
+      data-selected={selected || undefined}
       onMouseDown={(e) => {
         if (editing || e.button !== 0) return;
         if ((e.target as HTMLElement).closest('input, textarea, select, button, [contenteditable="true"]')) return;
@@ -296,9 +302,16 @@ function EditableField({
         e.stopPropagation();
         startEdit(field);
       }}
+      onPointerDown={notePress}
+      onClick={(e) => {
+        // Phones have no reliable double-click: the first tap selects the card, the next one edits.
+        if (!isTouch() || !pressedSelected) return;
+        e.stopPropagation();
+        startEdit(field);
+      }}
       className={`${className} ${value ? "" : "text-ink-500/50"}`}
     >
-      {value || placeholder}
+      {value || (isTouch() ? placeholder?.replace("Double-click", "Tap twice") : placeholder)}
     </Tag>
   );
 }
@@ -691,6 +704,12 @@ function ListMemberRow({ child, actions }: { child: StoryNode; actions: BoardAct
       ) : (
         <span
           onDoubleClick={(e) => {
+            e.stopPropagation();
+            setRenaming(true);
+          }}
+          onPointerDown={notePress}
+          onClick={(e) => {
+            if (!isTouch() || !pressedSelected) return;
             e.stopPropagation();
             setRenaming(true);
           }}

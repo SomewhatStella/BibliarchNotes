@@ -39,6 +39,7 @@ import './design-round2.css';
 import './design-round3.css';
 import './cover.css';
 import './dark.css';
+import './mobile.css';
 import {usePageSequence} from "../src/pagination/usePageSequence";
 import ImageLibrary from '../src/ImageLibrary';
 import DecalTray from '../src/DecalTray';
@@ -133,10 +134,19 @@ export default function Studio({userId}:{userId:string}) {
     return()=>{document.removeEventListener('pointerdown',closeMenus);document.removeEventListener('keydown',closeMenus);};
   },[]);
   useEffect(()=>{
-    const narrow=window.matchMedia('(max-width:700px)');
-    const compact=()=>{if(narrow.matches){setOutline(false);setToolTab('');setZoom(50);}};
+    const narrow=window.matchMedia('(max-width:760px)');
+    const compact=()=>{if(narrow.matches){setOutline(false);setToolTab('');}};
     compact();narrow.addEventListener('change',compact);return()=>narrow.removeEventListener('change',compact);
   },[hydrated]);
+  // On a phone the page starts out filling the screen width (and refits when the phone is turned).
+  const fitBook=lib?.books.find(b=>b.id===lib.activeBook);
+  const fitWidth=fitBook?pageDimensions(fitBook.appearance)[0]:0;
+  useEffect(()=>{
+    if(!fitWidth)return;
+    const narrow=window.matchMedia('(max-width:760px)');let last=0;
+    const fit=()=>{if(!narrow.matches||window.innerWidth===last)return;last=window.innerWidth;setZoom(Math.max(40,Math.min(100,Math.floor((last-24)/(fitWidth*3.78)*100))));};
+    fit();window.addEventListener('resize',fit);return()=>window.removeEventListener('resize',fit);
+  },[hydrated,fitWidth]);
   const sequence=usePageSequence(lib?.books.find(b=>b.id===lib.activeBook),epoch);
   const libraryWords=lib?lib.books.reduce((n,b)=>n+b.chapters.reduce((m,c)=>m+c.scenes.reduce((k,s)=>k+wordCount(s.content),0),0),0):0;
   const goal=useWritingGoal(userId,libraryWords,!!lib&&hydrated);
@@ -679,7 +689,7 @@ export default function Studio({userId}:{userId:string}) {
       <style>{fontCss(book.customFonts || []) + designCss + paragraphStyleCss('.paper .editor') + `.toc-list{list-style:none;margin:0;padding:0;font-family:var(--body-font)}.toc-list li{display:flex;align-items:baseline;gap:6px;margin:0 0 .55em}.toc-list i{flex:1;border-bottom:1px dotted #999;transform:translateY(-3px)}.toc-list b{font-weight:400}.paper .editor h1:first-child,.paper .editor h2:first-child,.paper .editor h6:first-child{margin-top:0}` + `.document-heading{display:flex;flex-direction:column;align-items:flex-start;gap:2px}.settings-shortcuts{display:flex;flex-direction:column;gap:8px}.settings-shortcuts h3{margin:12px 0 0;font-size:13px}.format-more{position:relative}.advanced-formatting{position:absolute;top:100%;left:0;min-width:320px;padding:16px;background:white;box-shadow:0 4px 24px #0003;z-index:100;display:flex;flex-wrap:wrap;gap:8px}.page-tools [role=tablist]{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:3px;margin-bottom:16px}.page-tools [role=tab]{padding:8px 5px;font-size:12px}.page-tools [aria-selected=true]{background:#57416e;color:white}.canvas-note,.ruler{display:none}.decal-tray[hidden]{display:none}.artwork-overlay [contenteditable]{min-width:1ch;min-height:1.2em;border:0;outline:1px dashed #777;padding:0;pointer-events:auto}.artwork-overlay [contenteditable],.artwork-overlay [contenteditable]:focus{background:transparent!important}.artwork-overlay{print-color-adjust:exact;-webkit-print-color-adjust:exact}@media print{.artwork-overlay [contenteditable]{outline:none!important}}.crop-controls>p{display:none}.illustration-crop>button[hidden]{display:none}.image-mini-toolbar button{font-size:14px;padding:6px 10px}@media print{.image-mini-toolbar,.artwork-overlay>button{display:none!important}}`}</style>
       {importDialog}
       <header className="masthead">
-        <button className="home-button" onClick={()=>{setHome(true);setPanel('');setGallery(false)}} title="Back to all your books">← My books</button>
+        <button className="home-button" onClick={()=>{setHome(true);setPanel('');setGallery(false)}} title="Back to all your books" aria-label="Back to all your books">←<span className="home-label"> My books</span></button>
         <div className="document-heading">
           <input
             aria-label="Book title"
@@ -736,7 +746,7 @@ export default function Studio({userId}:{userId:string}) {
         </span>
 
         <button className="share" onClick={() => setPanel("export")}>
-          Preview &amp; export
+          Preview<span className="share-long"> &amp; export</span>
         </button>
         <BugReport userId={userId}/>
         <ThemeToggle className="masthead-theme"/>
@@ -762,7 +772,7 @@ export default function Studio({userId}:{userId:string}) {
           value={zoom}
           onChange={(e) => setZoom(+e.target.value)}
         >
-          {[50, 75, 90, 100, 125, 150].map((n) => (
+          {[...new Set([zoom, 50, 75, 90, 100, 125, 150])].sort((x, y) => x - y).map((n) => (
             <option key={n} value={n}>
               {n}%
             </option>
@@ -779,7 +789,7 @@ export default function Studio({userId}:{userId:string}) {
       </div>
       <div className="workspace">
         {outline && (
-          <aside className="outline panel" aria-label="Outline panel">
+          <aside className="outline panel" aria-label="Outline panel" onClick={e=>{if((e.target as HTMLElement).closest('.chapter-row>button,.outline-page')&&window.matchMedia('(max-width:760px)').matches)setOutline(false);}}>
             <h2>Pages</h2>
             <button className="outline-cover" onClick={()=>setPanel('cover')} aria-label="Cover and spine">
               <OutlineCover book={book} pages={sequence.total}/>
@@ -853,7 +863,7 @@ export default function Studio({userId}:{userId:string}) {
 
           </aside>
         )}
-        <main className="document-scroller" aria-label="Document pages">
+        <main className="document-scroller" aria-label="Document pages" onClick={()=>{if(outline&&window.matchMedia('(max-width:760px)').matches)setOutline(false);}}>
           {bookView!=='write'&&<BookPreview key={book.id} mode={bookView} title={book.title}/>}
           <div className="ruler" style={{ width: (width * 3.78 * zoom) / 100 }}>
             0　　 1　　 2　　 3　　 4　　 5　　 6　　 7　　 8　　 9　　 10　　

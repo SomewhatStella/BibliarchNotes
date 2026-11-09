@@ -70,3 +70,8 @@ html[data-ui-theme=dark] .site-home{background:#1e1e2a;color:#eeedf2;--home-mute
 
 /* Phones: identical end buttons in every app, so the page links stay centred. */
 @media(max-width:700px){.site-navigation .ui-theme-toggle{width:44px;min-width:44px;padding:0;gap:0;justify-content:center}.site-navigation :is(.feedback-button,.site-feedback-button){width:40px;min-width:40px}}
+
+/* iPhones zoom the whole page when a field's text is under 16px. */
+@media (max-width:760px){
+  :is(.shared-account,.fb-form,.site-workspace .library-home) :is(input:not([type=range],[type=checkbox],[type=radio],[type=color],[type=file]),select,textarea){font-size:16px!important}
+}
