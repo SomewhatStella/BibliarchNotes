@@ -7,7 +7,7 @@ export const metadata: Metadata = {title: {absolute: 'About Bibliarch: Free Note
 
 const faqs: Faq[] = [
   {q: 'What is Bibliarch?', a: 'Bibliarch is a free website for writers and creators. It has two tools under one account: Notes, a visual note-taking board, and Books, an online book creator.'},
-  {q: 'How much does Bibliarch cost?', a: 'Bibliarch is free to use. It needs an account so your work can be saved.'},
+  {q: 'How much does Bibliarch cost?', a: 'Bibliarch is free to use, and it’s supported by donations. It needs an account so your work can be saved.'},
   {q: 'Do I need to download anything?', a: 'No. Bibliarch runs in a web browser on computers, tablets and phones.'},
   {q: 'Who is Bibliarch best for?', a: 'People planning stories, keeping track of original characters, building fictional worlds, or making and self-publishing their own books.'},
   {q: 'When is something else a better fit?', a: 'Bibliarch is built around creative projects, so a general notes app may suit plain to-do lists or work notes better. It has no offline app, and it doesn’t publish or sell your book for you: you download the files and upload them to a service like Amazon KDP or IngramSpark yourself.'},

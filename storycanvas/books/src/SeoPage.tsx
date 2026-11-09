@@ -11,6 +11,7 @@ export const GUIDES = [
   {href: '/oc-tools/things-to-do-with-your-ocs', label: 'Things to do with your OCs'},
   {href: '/oc-tools/oc-profile-template', label: 'OC profile template'},
   {href: '/about', label: 'About Bibliarch'},
+  {href: '/donate', label: 'Donate'},
 ];
 
 export function JsonLd({data}: {data: object}) {
@@ -45,7 +46,7 @@ export default function SeoPage({path, name, kicker, title, lead, cta, faqs, chi
         <h1>{title}</h1>
         <p className="seo-lead">{lead}</p>
         <div className="welcome-actions seo-actions">
-          {cta.map((c, i) => <a key={c.href} className={`welcome-button${i === 0 ? ' welcome-button-primary' : ''}`} href={c.href}>{c.label} <span aria-hidden="true">→</span></a>)}
+          {cta.map((c, i) => <a key={c.href} className={`welcome-button${i === 0 ? ' welcome-button-primary' : ''}`} href={c.href} {...(c.href.startsWith('http') ? {target: '_blank', rel: 'noreferrer noopener'} : {})}>{c.label} <span aria-hidden="true">→</span></a>)}
         </div>
         {children}
         {faqs && (

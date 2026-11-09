@@ -13,6 +13,9 @@
 .seo-article ul, .seo-article ol { margin: 0 0 14px; padding-left: 22px; }
 .seo-article li { margin-bottom: 6px; }
 .seo-article section a, .seo-note a { color: var(--ui-accent-dark); text-underline-offset: 3px; }
+.seo-donate-note { margin: 14px 0 0; color: var(--ui-muted); font-size: 13px !important; }
+.welcome-donate { margin: 22px 0 0; color: var(--ui-muted); font-size: 14px; }
+.welcome-donate a { color: var(--ui-accent-dark); text-underline-offset: 3px; }
 .seo-features { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 0 !important; list-style: none; }
 .seo-features li { margin: 0; padding: 16px 18px; border: 1px solid var(--ui-line); border-radius: 8px; background: var(--ui-raised); font-size: 15px; line-height: 1.6; }
 .seo-features strong { display: block; margin-bottom: 2px; font-weight: 600; }

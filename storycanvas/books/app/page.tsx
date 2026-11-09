@@ -95,6 +95,7 @@ export default function Home() {
             <a className="welcome-button welcome-button-primary" href="/notes/dashboard">Open Notes <span aria-hidden="true">→</span></a>
             <a className="welcome-button" href="/books">Open Books <span aria-hidden="true">→</span></a>
           </div>
+          <p className="welcome-donate">Bibliarch is free for everyone. If it helps your stories, <a href="/donate">a donation keeps it growing</a>.</p>
         </section>
         <div className="welcome-footer-links"><SiteLinks /></div>
         <footer className="welcome-footer">

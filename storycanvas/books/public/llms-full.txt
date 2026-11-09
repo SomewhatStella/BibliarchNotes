@@ -14,7 +14,7 @@ Bibliarch is a free website for writers and creators. It has two tools that shar
 
 Notes and Books use the same login, but their contents do not sync automatically.
 
-Price: free to use. An account is required so work can be saved.
+Price: free to use. Bibliarch is supported by optional donations (https://bibliarch.com/donate); donating does not unlock any features. An account is required so work can be saved.
 Platform: runs in a web browser on computers, tablets and phones. Nothing to install. No offline app.
 
 ## Good fit

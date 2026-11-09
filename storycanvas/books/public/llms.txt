@@ -4,7 +4,7 @@
 
 Key facts:
 
-- Price: free to use. An account is required so work can be saved.
+- Price: free to use, supported by optional donations (https://bibliarch.com/donate). An account is required so work can be saved.
 - Platform: web only. Nothing to install. There is no offline app.
 - Publishing: Bibliarch makes the files. It does not sell or distribute books; users upload files to services like Amazon KDP or IngramSpark themselves. It is not affiliated with those services.
 
