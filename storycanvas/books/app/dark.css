@@ -43,4 +43,4 @@ html[data-ui-theme=dark] .cover-window{box-shadow:0 0 0 1px #ffffff2e,0 10px 34p
 html[data-ui-theme=dark] .cover-styles .cover-view,html[data-ui-theme=dark] .outline-cover .cover-view,html[data-ui-theme=dark] .export-cover .cover-view{box-shadow:0 0 0 1px #ffffff2e}
 
 /* The tray's black-ink filter also blackened these tiles' light backing, hiding every ornament. */
-html[data-ui-theme=dark] .decal-tray>button img{filter:none}
+html[data-ui-theme=dark] .decal-tray>button img{filter:none!important}
