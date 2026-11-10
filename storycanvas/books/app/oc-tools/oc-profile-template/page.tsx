@@ -71,7 +71,7 @@ export default function Page() {
         <h2>How to use it well</h2>
         <p>Start with what they want and what they’re afraid of. Those two answers do most of the work, and the rest gets easier once you know them.</p>
         <p>Then fill it in again as a different character would. What your OC says about themselves and what their rival says are rarely the same, and that gap is usually where the good story is.</p>
-        <p>Finished one? Try something from our list of <a href="/oc-tools/things-to-do-with-your-ocs">60 things to do with your OCs</a>.</p>
+        <p>Finished one? See <a href="/oc-tools/things-to-do-with-your-ocs">what else you can do with your OCs on Bibliarch</a>.</p>
       </section>
     </SeoPage>
   );

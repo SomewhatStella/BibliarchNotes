@@ -35,3 +35,5 @@
   .seo-features { grid-template-columns: 1fr; }
   .seo-lead { font-size: 17px; }
 }
+.seo-steps li { margin-bottom: 14px; }
+.seo-steps strong { font-weight: 600; }

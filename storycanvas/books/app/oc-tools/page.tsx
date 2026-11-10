@@ -33,7 +33,7 @@ export default function Page() {
         <h3><a href="/oc-tools/oc-profile-template">OC profile template</a></h3>
         <p>A free list of questions to fill in for any character, from the basics to their worst secret.</p>
         <h3><a href="/oc-tools/things-to-do-with-your-ocs">Things to do with your OCs</a></h3>
-        <p>Out of ideas? A long list of things to write, draw and try with your characters.</p>
+        <p>Everything you can do with your characters here, from taking notes on them to mapping who they know.</p>
         <h3><a href="/book-creator">Make a book about your OCs</a></h3>
         <p>Write their story, or make a character guide, and download it as a real book file.</p>
       </section>
