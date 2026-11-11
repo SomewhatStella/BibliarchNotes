@@ -57,12 +57,12 @@ Where they end up:`;
 const faqs: Faq[] = [
   {q: 'What should an OC profile include?', a: 'The basics, what they look like, how they act, what they want, what they’re afraid of, their history, and how they relate to other characters. What they want and what they’re hiding usually matter more than height and eye color.'},
   {q: 'Do I have to fill in every question?', a: 'No. Skip anything that doesn’t matter for your character, and add anything that’s missing. Empty answers are useful too, since they show you what you haven’t figured out yet.'},
-  {q: 'Where can I keep my filled-in OC profiles?', a: 'Anywhere you like. Bibliarch Notes is a free option that gives each character their own board, with room for images and relationship maps.'},
+  {q: 'Where can I keep my filled-in OC profiles?', a: 'In Bibliarch Notes. It’s free, and gives each character their own board, with room for images and relationship maps.'},
 ];
 
 export default function Page() {
   return (
-    <SeoPage path={path} name="OC profile template" kicker="Free template" title="OC profile template" lead="A free character sheet for any original character. Copy it, paste it anywhere, and fill in as much or as little as you want." cta={[{href: '/notes/dashboard', label: 'Keep your OCs in Bibliarch'}, {href: '/oc-tools/things-to-do-with-your-ocs', label: 'Things to do with your OCs'}]} faqs={faqs}>
+    <SeoPage path={path} name="OC profile template" kicker="Free template" title="OC profile template" lead="A free character sheet for any original character. Copy it into a character card in Bibliarch Notes and fill in as much or as little as you want." cta={[{href: '/notes/dashboard', label: 'Keep your OCs in Bibliarch'}, {href: '/oc-tools/things-to-do-with-your-ocs', label: 'Things to do with your OCs'}]} faqs={faqs}>
       <section>
         <h2>The template</h2>
         <pre className="seo-template" tabIndex={0}>{TEMPLATE}</pre>

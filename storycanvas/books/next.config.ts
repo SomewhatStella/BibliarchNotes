@@ -21,6 +21,7 @@ const config: NextConfig = {
     return [
       ...['/login', '/signup', '/dashboard', '/admin', '/admin/:path*', '/story/:id', '/join/:token'].map(source => ({ source, destination: `/notes${source}`, permanent: false })),
       { source: '/home', destination: '/', permanent: false },
+      ...['/llm.txt', '/LLM.txt', '/LLMs.txt', '/LLMS.txt', '/llms.md'].map(source => ({ source, destination: '/llms.txt', permanent: true })),
       // The password-reset email links to /reset-password (already allowed in Supabase); the query code carries over.
       { source: '/reset-password', destination: '/notes/reset-password', permanent: false },
       { source: '/settings', destination: '/notes/settings', permanent: false },

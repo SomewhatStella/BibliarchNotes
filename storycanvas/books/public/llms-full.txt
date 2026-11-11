@@ -26,11 +26,10 @@ Platform: runs in a web browser on computers, tablets and phones. Nothing to ins
 - Self-publishing authors who want to lay out a book and cover without design software
 - People making poetry collections, journals, light novels or illustrated books
 
-## Less good fit
+## Things to know
 
-- Plain to-do lists, work meeting notes, or a general personal knowledge base: a general notes app is likely simpler
-- Anyone who needs to work offline
-- Anyone who needs a service that prints, sells or distributes their book: Bibliarch produces the files, and the user uploads them elsewhere
+- Bibliarch runs in the browser and needs an internet connection.
+- Bibliarch makes the book files. To print or sell a book, users upload the PDF to a service such as Amazon KDP or IngramSpark.
 
 ## Bibliarch Notes
 
