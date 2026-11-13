@@ -177,3 +177,19 @@ html[data-ui-theme='dark'] .admin-shell { --a-good: #7fd3a0; --a-bad: #f19aa6; -
 }
 .admin-activity-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 @media (max-width: 560px) { .admin-activity-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* Visitors without an account */
+.admin-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 8px 0 2px; color: var(--ui-muted); font-size: 12px; }
+.admin-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.admin-key { display: inline-block; width: 12px; height: 12px; border-radius: 3px; }
+.admin-key-visit, .admin-visit-bar { background: color-mix(in srgb, var(--ui-accent) 38%, var(--ui-raised)); fill: color-mix(in srgb, var(--ui-accent) 38%, var(--ui-raised)); }
+.admin-key-join, .admin-join-bar { background: var(--ui-accent); fill: var(--ui-accent); }
+.admin-visit-bar, .admin-join-bar { transition: opacity .12s; }
+.admin-visit-bar.is-dim, .admin-join-bar.is-dim { opacity: .45; }
+.admin-visit-bar.is-today { fill: url(#visit-today-hatch); stroke: color-mix(in srgb, var(--ui-accent) 60%, var(--ui-raised)); stroke-width: 1; }
+.admin-visit-today-bg { fill: color-mix(in srgb, var(--ui-accent) 14%, transparent); }
+.admin-visit-today-line { stroke: color-mix(in srgb, var(--ui-accent) 45%, transparent); stroke-width: 2; }
+.admin-visitor-tables { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 8px; }
+.admin-visitor-tables .admin-table-wrap { max-height: 360px; overflow-y: auto; }
+.admin-visitor-page { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; word-break: break-all; }
+@media (max-width: 760px) { .admin-visitor-tables { grid-template-columns: minmax(0, 1fr); } }

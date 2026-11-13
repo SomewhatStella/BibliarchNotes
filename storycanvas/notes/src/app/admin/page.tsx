@@ -6,6 +6,7 @@ import { ArrowLeft, Users, MessageSquare, Loader2, ShieldAlert } from "lucide-re
 import { createClient } from "@/lib/supabase/client";
 import { useAdminGate } from "@/lib/use-admin-gate";
 import { ActivityPanel } from "@/components/ActivityPanel";
+import { VisitorsPanel } from "@/components/VisitorsPanel";
 
 export default function AdminPage() {
   const gate = useAdminGate();
@@ -49,6 +50,7 @@ export default function AdminPage() {
       </Link>
       <h1 className="admin-title">Admin</h1>
       <ActivityPanel />
+      <VisitorsPanel />
       <div className="admin-home-grid">
         <Link href="/admin/users" className="admin-home-card">
           <Users size={22} />

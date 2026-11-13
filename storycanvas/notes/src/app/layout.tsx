@@ -5,6 +5,7 @@ import "./board-theme.css";
 import "./feedback.css";
 import { ThemeBootstrap } from "../components/ThemeToggle";
 import { ActivityPing } from "../components/ActivityPing";
+import { VisitPing } from "../components/VisitPing";
 
 
 export const metadata: Metadata = {
@@ -24,6 +25,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="font-body antialiased" suppressHydrationWarning>
         {children}
         <ActivityPing />
+        <VisitPing />
       </body>
     </html>
   );
