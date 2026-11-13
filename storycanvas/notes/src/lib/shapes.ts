@@ -63,6 +63,31 @@ export function withOrientation(node: StoryNode, orientation: "horizontal" | "ve
   return orientation === "vertical" ? { width: DIVIDER_THICKNESS, height: long, shape } : { width: long, height: DIVIDER_THICKNESS, shape };
 }
 
+export type NodeMove = { id: string; x: number; y: number; linePoints?: StoryNode["linePoints"] };
+
+/**
+ * What travels with a section frame when it's dragged: every top-level card,
+ * shape, drawing or arrow lying wholly inside it (other frames stay put, so
+ * overlapping frames don't drag each other around).
+ */
+export function framePassengers(frame: StoryNode, nodes: StoryNode[]): StoryNode[] {
+  if (frame.type !== "shape" || frame.shape?.kind !== "frame") return [];
+  const inside = (x: number, y: number) => x >= frame.x && x <= frame.x + frame.width && y >= frame.y && y <= frame.y + frame.height;
+  return nodes.filter((n) => {
+    if (n.id === frame.id || n.parentId || (n.type === "shape" && n.shape?.kind === "frame")) return false;
+    if (n.type === "line") return !!n.linePoints && [n.linePoints.start, n.linePoints.middle, n.linePoints.end].every((p) => inside(p.x, p.y));
+    return inside(n.x, n.y) && inside(n.x + n.width, n.y + n.height);
+  });
+}
+
+/** The same passengers shifted by (dx, dy) from where they started. */
+export function shiftNodes(nodes: StoryNode[], dx: number, dy: number): NodeMove[] {
+  const at = (p: { x: number; y: number }) => ({ x: p.x + dx, y: p.y + dy });
+  return nodes.map((n) => n.type === "line" && n.linePoints
+    ? { id: n.id, x: n.x + dx, y: n.y + dy, linePoints: { start: at(n.linePoints.start), middle: at(n.linePoints.middle), end: at(n.linePoints.end) } }
+    : { id: n.id, x: n.x + dx, y: n.y + dy });
+}
+
 /** Kinds that carry no content and must never be dropped into a folder or list. */
 export function isDecoration(node: StoryNode): boolean {
   return node.type === "shape" || node.type === "drawing" || node.type === "line";

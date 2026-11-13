@@ -6,7 +6,7 @@ import type { CanvasRow, ConnectionType, NodeType, StoryNode } from "@/lib/types
 import { CONNECTION_TYPES } from "@/lib/types";
 import NodeCard, { renderedSize } from "./NodeCard";
 import { snapMove, snapResize, type Guide } from "@/lib/smart-snap";
-import { clampResize, isDecoration } from "@/lib/shapes";
+import { clampResize, framePassengers, isDecoration, shiftNodes, type NodeMove } from "@/lib/shapes";
 import SnapGuides from "./SnapGuides";
 import { PenOverlay, PenToolbar, usePenTool } from "./PenLayer";
 
@@ -32,6 +32,8 @@ export interface BoardActions {
   unlockNode: (nodeId: string) => void;
   /** Add a ready-made node to the current board (pen strokes). */
   addNode?: (node: StoryNode) => void;
+  /** Move several nodes as one edit (a frame and what's inside it). */
+  moveNodes?: (moves: NodeMove[]) => void;
 }
 
 const WORLD_SIZE = 6000;
@@ -343,9 +345,12 @@ export default function CanvasView({
         nodeStartH: node.height,
       };
       onSelect(id);
+      // A section frame carries the cards inside it.
+      const passengers = kind === "move" ? framePassengers(node, canvas.nodes) : [];
+      const riding = new Set(passengers.map((p) => p.id));
       // Everything this card could line up with, at the size each one is actually drawn.
       const others = smartSnap
-        ? canvas.nodes.filter((n) => n.id !== id && !n.parentId && n.type !== "line").map((n) => ({ x: n.x, y: n.y, ...renderedSize(n) }))
+        ? canvas.nodes.filter((n) => n.id !== id && !riding.has(n.id) && !n.parentId && n.type !== "line").map((n) => ({ x: n.x, y: n.y, ...renderedSize(n) }))
         : [];
       const size = renderedSize(node);
 
@@ -362,7 +367,11 @@ export default function CanvasView({
           const smart = !free && others.length ? snapMove({ ...raw, ...size }, others, threshold) : null;
           const nx = smart?.x ?? snapTo(raw.x, gridSize, snap && !free), ny = smart?.y ?? snapTo(raw.y, gridSize, snap && !free);
           setGuides(smart?.guides ?? []);
-          actions.moveNode(ds.id, nx, ny);
+          if (passengers.length) {
+            const moves = [{ id: ds.id, x: nx, y: ny }, ...shiftNodes(passengers, nx - ds.nodeStartX, ny - ds.nodeStartY)];
+            if (actions.moveNodes) actions.moveNodes(moves);
+            else moves.forEach((m) => (m.linePoints ? actions.editNode(m.id, m) : actions.moveNode(m.id, m.x, m.y)));
+          } else actions.moveNode(ds.id, nx, ny);
           dropRef.current = Math.hypot(ev.clientX - ds.startX, ev.clientY - ds.startY) > 6 ? findDropTarget(node, nx, ny) : null;
           setDropTarget(dropRef.current);
         } else {

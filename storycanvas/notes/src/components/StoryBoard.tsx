@@ -335,6 +335,14 @@ export default function StoryBoard({ storyId, storyTitle, userId }: { storyId: s
     unlockNode(nodeId) {
       broadcastNodeUnlock(nodeId);
     },
+    moveNodes(moves) {
+      if (readOnly || !moves.length) return;
+      const ct = findOwningCanvasType(moves[0]!.id);
+      if (!ct) return;
+      // One broadcast for the whole group, not one per card.
+      moves.forEach(({ id, ...patch }) => store.updateNode(ct, id, patch.linePoints ? patch : { x: patch.x, y: patch.y }));
+      broadcastCurrent(ct);
+    },
     addNode(node) {
       if (readOnly) return;
       store.addNode(currentCanvasType, node);

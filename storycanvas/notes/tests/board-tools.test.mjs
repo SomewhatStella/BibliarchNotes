@@ -139,3 +139,19 @@ test('templates are fresh each time',()=>{
   assert.ok(a.nodes.every(n=>!b.nodes.some(m=>m.id===n.id)));
   const box=tree.templateBounds(a.nodes);assert.ok(box.w>1000&&box.h>600);
 });
+test('a frame carries what lies wholly inside it, never other frames or half-in cards',()=>{
+  const frame={id:'f',type:'shape',shape:{kind:'frame'},x:0,y:0,width:500,height:300};
+  const nodes=[frame,
+    {id:'in',type:'text',x:20,y:20,width:100,height:50},
+    {id:'half',type:'text',x:450,y:20,width:100,height:50},
+    {id:'inner-frame',type:'shape',shape:{kind:'frame'},x:10,y:10,width:50,height:50},
+    {id:'child',type:'character',parentId:'list',x:30,y:30,width:10,height:10},
+    {id:'arrow',type:'line',x:100,y:100,width:0,height:0,linePoints:{start:{x:50,y:50},middle:{x:100,y:100},end:{x:150,y:60}}},
+    {id:'arrow-out',type:'line',x:100,y:100,width:0,height:0,linePoints:{start:{x:50,y:50},middle:{x:100,y:100},end:{x:900,y:60}}}];
+  const p=shapes.framePassengers(frame,nodes);
+  assert.deepEqual(p.map(n=>n.id),['in','arrow']);
+  const moved=shapes.shiftNodes(p,10,-5);
+  assert.deepEqual(moved[0],{id:'in',x:30,y:15});
+  assert.deepEqual(moved[1].linePoints.end,{x:160,y:55});
+  assert.deepEqual(shapes.framePassengers({...frame,shape:{kind:'rect'}},nodes),[]);
+});

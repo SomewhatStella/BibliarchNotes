@@ -183,7 +183,7 @@ export function ShapeStyleSection({ node, onChange }: { node: StoryNode; onChang
           <Pills options={[["back", "Behind cards"], ["front", "In front"]]} value={s.layer ?? "back"} onChange={(v) => set({ layer: v as "back" | "front" })} />
         </Row>
       )}
-      {s.kind === "frame" && <p className="mb-3.5 text-[11px] text-ink-500">Frames always sit behind cards. Double-click the label to rename it.</p>}
+      {s.kind === "frame" && <p className="mb-3.5 text-[11px] text-ink-500">Frames always sit behind cards, and moving one moves everything inside it. Double-click the label to rename it.</p>}
     </>
   );
 }
