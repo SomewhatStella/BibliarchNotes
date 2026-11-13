@@ -23,6 +23,10 @@ import PaletteEditor from "./PaletteEditor";
 import CustomTypesDialog from "./CustomTypesDialog";
 import { instantiateTemplate, snapshotInteriors, type CustomTemplate } from "@/lib/custom-templates";
 import { boardTemplateKey, instantiateBoardTemplate } from "@/lib/board-templates";
+import { generateId } from "@/lib/node-factory";
+import { shapeDefaults } from "@/lib/shapes";
+import { BOARD_TEMPLATES, templateBounds, type BoardTemplateKey } from "@/lib/family-tree";
+import type { ShapeKind } from "@/lib/types";
 
 type Crumb = { canvasType: string; label: string };
 
@@ -57,6 +61,8 @@ export default function StoryBoard({ storyId, storyTitle, userId }: { storyId: s
   const [connectMode, setConnectMode] = useState(false);
   const [gridSize, setGridSize] = useState(20);
   const [snap, setSnap] = useState(true);
+  const [smartSnap, setSmartSnap] = useState(true);
+  const [penMode, setPenMode] = useState(false);
 
   const [access, setAccess] = useState<{ isOwner: boolean; role: StoryRole } | null>(null);
   const [username, setUsername] = useState("");
@@ -88,6 +94,7 @@ export default function StoryBoard({ storyId, storyTitle, userId }: { storyId: s
         const p = JSON.parse(prefs);
         if (p.gridSize) setGridSize(p.gridSize);
         if (typeof p.snap === "boolean") setSnap(p.snap);
+        if (typeof p.smartSnap === "boolean") setSmartSnap(p.smartSnap);
         if (typeof p.sidebarCollapsed === "boolean") setSidebarCollapsed(p.sidebarCollapsed);
       } catch {
         /* ignore malformed local prefs */
@@ -97,8 +104,8 @@ export default function StoryBoard({ storyId, storyTitle, userId }: { storyId: s
   }, [storyId]);
 
   useEffect(() => {
-    localStorage.setItem("bibliarch-notes:prefs", JSON.stringify({ gridSize, snap, sidebarCollapsed }));
-  }, [gridSize, snap, sidebarCollapsed]);
+    localStorage.setItem("bibliarch-notes:prefs", JSON.stringify({ gridSize, snap, smartSnap, sidebarCollapsed }));
+  }, [gridSize, snap, smartSnap, sidebarCollapsed]);
 
   // Flush any pending save when leaving the page/tab — the live app's own
   // bug history has a navigation-vs-autosave data-loss entry; don't repeat it.
@@ -328,6 +335,11 @@ export default function StoryBoard({ storyId, storyTitle, userId }: { storyId: s
     unlockNode(nodeId) {
       broadcastNodeUnlock(nodeId);
     },
+    addNode(node) {
+      if (readOnly) return;
+      store.addNode(currentCanvasType, node);
+      broadcastCurrent(currentCanvasType);
+    },
   };
 
   // Insert in the visible camera area, not below distant/offscreen content.
@@ -359,10 +371,51 @@ export default function StoryBoard({ storyId, storyTitle, userId }: { storyId: s
       Object.assign(node, { x: cx, y: cy, linePoints: { start: { x: cx - 100, y: cy }, middle: { x: cx, y: cy }, end: { x: cx + 100, y: cy } }, lineStyle: { color: "#000000", width: 2 } });
     }
     setConnectMode(false);
+    setPenMode(false);
     setInspectorAnchor(null);
     store.addNode(currentCanvasType, node);
     broadcastCurrent(currentCanvasType);
     setSelectedId(node.id);
+  }
+
+  function addShape(kind: ShapeKind, orientation?: "horizontal" | "vertical") {
+    if (!currentCanvas || readOnly) return;
+    const node = newNode("shape", shapeDefaults(kind, orientation));
+    Object.assign(node, insertionPosition(node));
+    setConnectMode(false);
+    setPenMode(false);
+    setInspectorAnchor(null);
+    store.addNode(currentCanvasType, node);
+    broadcastCurrent(currentCanvasType);
+    setSelectedId(node.id);
+  }
+
+  // Drops a starting layout (family tree…) into the top-left of the view, with an Undo.
+  function insertTemplate(key: BoardTemplateKey) {
+    if (!currentCanvas || readOnly) return;
+    const template = BOARD_TEMPLATES.find((t) => t.key === key);
+    if (!template) return;
+    const vp = viewport.current;
+    const made = template.build(generateId);
+    const box = templateBounds(made.nodes);
+    const dx = Math.round(Math.max(0, vp.x + 40) - box.x), dy = Math.round(Math.max(0, vp.y + 40) - box.y);
+    const nodes = made.nodes.map((n) => ({ ...n, x: n.x + dx, y: n.y + dy }));
+    const ct = currentCanvasType;
+    nodes.forEach((n) => store.addNode(ct, n));
+    made.connections.forEach((c) => store.addConnection(ct, c));
+    broadcastCurrent(ct);
+    setConnectMode(false);
+    setPenMode(false);
+    setInspectorAnchor(null);
+    setSelectedId(null);
+    setDropNotice({
+      text: `Added a ${template.label.toLowerCase()} — double-click a name to rename it`,
+      undo: () => {
+        made.connections.forEach((c) => store.deleteConnection(ct, c.id));
+        nodes.forEach((n) => store.deleteNode(ct, n.id));
+        broadcastCurrent(ct);
+      },
+    });
   }
 
   function createTypeInstance(template: CustomTemplate) {
@@ -441,7 +494,11 @@ export default function StoryBoard({ storyId, storyTitle, userId }: { storyId: s
         onManageTypes={() => setTypesOpen(true)}
         onAddNode={addNode}
         connectMode={connectMode}
-        onToggleConnectMode={() => setConnectMode((v) => !v)}
+        onToggleConnectMode={() => { setPenMode(false); setConnectMode((v) => !v); }}
+        penMode={penMode}
+        onTogglePenMode={() => { setConnectMode(false); setSelectedId(null); setInspectorAnchor(null); setPenMode((v) => !v); }}
+        onAddShape={addShape}
+        onInsertTemplate={insertTemplate}
         onBackToDashboard={() => router.push("/dashboard")}
         readOnly={readOnly}
         collapsed={sidebarCollapsed}
@@ -482,6 +539,10 @@ export default function StoryBoard({ storyId, storyTitle, userId }: { storyId: s
             lockedNodes={lockedNodes}
             connectMode={connectMode}
             onExitConnectMode={() => setConnectMode(false)}
+            penMode={penMode}
+            onExitPenMode={() => setPenMode(false)}
+            smartSnap={smartSnap}
+            onToggleSmartSnap={() => setSmartSnap((v) => !v)}
             onOpenInspector={(nodeId, anchor) => setInspectorAnchor({ nodeId, ...anchor })}
           />
           </div>

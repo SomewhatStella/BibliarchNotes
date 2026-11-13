@@ -1,10 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type WheelEvent as ReactWheelEvent } from "react";
-import { Trash2, Unlink } from "lucide-react";
+import { Magnet, Trash2, Unlink } from "lucide-react";
 import type { CanvasRow, ConnectionType, NodeType, StoryNode } from "@/lib/types";
 import { CONNECTION_TYPES } from "@/lib/types";
-import NodeCard from "./NodeCard";
+import NodeCard, { renderedSize } from "./NodeCard";
+import { snapMove, snapResize, type Guide } from "@/lib/smart-snap";
+import { clampResize, isDecoration } from "@/lib/shapes";
+import SnapGuides from "./SnapGuides";
+import { PenOverlay, PenToolbar, usePenTool } from "./PenLayer";
 
 export interface CanvasViewport { x: number; y: number; width: number; height: number }
 
@@ -26,6 +30,8 @@ export interface BoardActions {
   uploadNodeImage: (nodeId: string, file: File) => void;
   lockNode: (nodeId: string, field: string) => void;
   unlockNode: (nodeId: string) => void;
+  /** Add a ready-made node to the current board (pen strokes). */
+  addNode?: (node: StoryNode) => void;
 }
 
 const WORLD_SIZE = 6000;
@@ -66,7 +72,16 @@ export default function CanvasView({
   onExitConnectMode,
   onOpenInspector,
   onViewportChange,
+  penMode = false,
+  onExitPenMode,
+  smartSnap = false,
+  onToggleSmartSnap,
 }: {
+  penMode?: boolean;
+  onExitPenMode?: () => void;
+  /** Alignment snapping to other cards' edges and centres (Alt while dragging skips it). */
+  smartSnap?: boolean;
+  onToggleSmartSnap?: () => void;
   onViewportChange?: (viewport: CanvasViewport) => void;
   canvas: CanvasRow;
   allCharacters: { id: string; name: string; profileImageUrl?: string }[];
@@ -115,6 +130,8 @@ export default function CanvasView({
   // The Arrow tool's click-to-connect path — an alternative to dragging from
   // a card's gold connector dot, for the sidebar's "just the tools" request.
   const [clickConnectFrom, setClickConnectFrom] = useState<string | null>(null);
+  const [guides, setGuides] = useState<Guide[]>([]);
+  const pen = usePenTool(penMode, canvas.nodes, actions);
 
   useEffect(() => {
     if (!connectMode) setClickConnectFrom(null);
@@ -266,7 +283,7 @@ export default function CanvasView({
   // edge never swallows it), and anything that sat under the card when the drag began is ignored.
   const findDropTarget = useCallback(
     (node: StoryNode, x: number, y: number): { id: string; kind: "list" | "board" } | null => {
-      if (node.parentId || node.type === "line") return null;
+      if (node.parentId || isDecoration(node)) return null;
       const cx = x + node.width / 2, cy = y + node.height / 2;
       const under = (t: StoryNode) => !(t.x + t.width < node.x || t.x > node.x + node.width || t.y + t.height < node.y || t.y > node.y + node.height);
       const hit = (t: StoryNode) => cx > t.x && cx < t.x + t.width && cy > t.y && cy < t.y + t.height;
@@ -326,29 +343,43 @@ export default function CanvasView({
         nodeStartH: node.height,
       };
       onSelect(id);
+      // Everything this card could line up with, at the size each one is actually drawn.
+      const others = smartSnap
+        ? canvas.nodes.filter((n) => n.id !== id && !n.parentId && n.type !== "line").map((n) => ({ x: n.x, y: n.y, ...renderedSize(n) }))
+        : [];
+      const size = renderedSize(node);
 
       const onMove = (ev: MouseEvent) => {
         const ds = dragState.current;
         if (!ds) return;
         const dx = (ev.clientX - ds.startX) / zoom;
         const dy = (ev.clientY - ds.startY) / zoom;
+        // Alt = place freely: no alignment snap and no grid snap for this move.
+        const free = ev.altKey;
+        const threshold = 6 / zoom; // ~6 screen pixels at any zoom
         if (ds.kind === "move") {
-          const nx = snapTo(ds.nodeStartX + dx, gridSize, snap), ny = snapTo(ds.nodeStartY + dy, gridSize, snap);
+          const raw = { x: ds.nodeStartX + dx, y: ds.nodeStartY + dy };
+          const smart = !free && others.length ? snapMove({ ...raw, ...size }, others, threshold) : null;
+          const nx = smart?.x ?? snapTo(raw.x, gridSize, snap && !free), ny = smart?.y ?? snapTo(raw.y, gridSize, snap && !free);
+          setGuides(smart?.guides ?? []);
           actions.moveNode(ds.id, nx, ny);
           dropRef.current = Math.hypot(ev.clientX - ds.startX, ev.clientY - ds.startY) > 6 ? findDropTarget(node, nx, ny) : null;
           setDropTarget(dropRef.current);
         } else {
-          actions.resizeNode(
-            ds.id,
-            Math.max(120, snapTo(ds.nodeStartW + dx, gridSize, snap)),
-            Math.max(40, snapTo(ds.nodeStartH + dy, gridSize, snap))
-          );
+          const raw = { w: ds.nodeStartW + dx, h: ds.nodeStartH + dy };
+          const smart = !free && others.length ? snapResize({ x: node.x, y: node.y, ...raw }, others, threshold) : null;
+          const w = smart?.w ?? snapTo(raw.w, gridSize, snap && !free), h = smart?.h ?? snapTo(raw.h, gridSize, snap && !free);
+          const c = clampResize(node, w, h);
+          // A guide is only true if the minimum size didn't override the snapped edge.
+          setGuides((smart?.guides ?? []).filter((g) => (g.axis === "x" ? c.w === w : c.h === h)));
+          actions.resizeNode(ds.id, c.w, c.h);
         }
       };
       const onUp = () => {
         const target = dropRef.current;
         dropRef.current = null;
         setDropTarget(null);
+        setGuides([]);
         if (target && dragState.current?.kind === "move") {
           if (target.kind === "list") actions.moveIntoList(target.id, id);
           else actions.moveIntoBoard(target.id, id);
@@ -360,7 +391,7 @@ export default function CanvasView({
       window.addEventListener("mousemove", onMove);
       window.addEventListener("mouseup", onUp);
     },
-    [actions, canvas.nodes, gridSize, snap, zoom, onSelect, readOnly, lockedNodes, findDropTarget]
+    [actions, canvas.nodes, gridSize, snap, smartSnap, zoom, onSelect, readOnly, lockedNodes, findDropTarget]
   );
 
   const beginConnectDrag = useCallback(
@@ -574,6 +605,9 @@ export default function CanvasView({
             );
           })()}
 
+          <SnapGuides guides={guides} zoom={zoom} />
+          {penMode && !readOnly && <PenOverlay pen={pen} toWorld={toWorld} zoom={zoom} />}
+
           {selectedConnMid && !readOnly && (
             <button
               onMouseDown={(e) => e.stopPropagation()}
@@ -619,6 +653,8 @@ export default function CanvasView({
         </div>
       )}
 
+      {penMode && !readOnly && onExitPenMode && <PenToolbar pen={pen} onExit={onExitPenMode} />}
+
       {connectMode && (
         <div className="absolute left-1/2 top-4 z-30 -translate-x-1/2 rounded-full bg-bibliarch-blue px-4 py-1.5 text-[12.5px] font-semibold text-white shadow-card">
           {clickConnectFrom ? "Now click the card to connect it to" : "Click a card to start a connection"}
@@ -629,6 +665,16 @@ export default function CanvasView({
       )}
 
       <div className="flex flex-none items-center justify-end gap-1.5 border-t border-ink-900/10 bg-editor-raised/90 px-3 py-1 font-mono text-[11px] text-ink-500">
+        {onToggleSmartSnap && (
+          <button
+            onClick={onToggleSmartSnap}
+            aria-pressed={smartSnap}
+            title={smartSnap ? "Snapping to other cards: on (hold Alt while dragging to place freely)" : "Snapping to other cards: off"}
+            className={`mr-1.5 flex items-center gap-1 rounded-full px-2 py-0.5 ${smartSnap ? "bg-bibliarch-blue/10 text-bibliarch-blue" : "hover:bg-ink-900/5"}`}
+          >
+            <Magnet size={12} /> snap
+          </button>
+        )}
         <button onClick={() => setZoom((z) => Math.max(MIN_ZOOM, z - 0.1))} className="rounded-full px-2 hover:bg-ink-900/5">−</button>
         {Math.round(zoom * 100)}%
         <button onClick={() => setZoom((z) => Math.min(MAX_ZOOM, z + 0.1))} className="rounded-full px-2 hover:bg-ink-900/5">+</button>
