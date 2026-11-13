@@ -1,4 +1,6 @@
 import {useEffect, useMemo, useState, type ReactNode} from 'react';
+import {ComicLayoutIcon} from './ComicPage';
+import {comicOf} from './comic';
 import {createPortal} from 'react-dom';
 import MiniPage from './MiniPage';
 import {pageDimensions, type Appearance} from './model';
@@ -29,11 +31,12 @@ export function PageThumbnail({template='book-front',style='minimal',title='Your
  const body=scene?documentText(scene.content):'';
  return <span aria-hidden="true" className={`page-thumbnail thumb-${template} thumb-${style}`} style={{textAlign:layout?.titleAlign,borderStyle:layout?.border==='double'?'double':layout?.border==='solid'?'solid':undefined,borderWidth:layout?.border==='double'?4:undefined}}>
   {template==='chapter-title'&&<small>CHAPTER ONE</small>}
-  {template!=='prose'&&<strong>{title}</strong>}
+  {template!=='prose'&&template!=='comic'&&<strong>{title}</strong>}
   {scene?.image?<img src={scene.image.src} alt=""/>:['color-art','bnw-art'].includes(template)?<span className="thumb-art"><i/><b/></span>:null}
   {template==='characters'?<span className="thumb-portraits">◯ ◯ ◯</span>:null}
+  {template==='comic'?<ComicLayoutIcon comic={comicOf(scene||{})} width={60} height={80}/>:null}
   {template==='toc'?<span className="thumb-contents">Opening ······· 1<br/>The journey ··· 3<br/>Afterword ···· 9</span>:null}
-  {body?<span className="thumb-excerpt">{body.slice(0,220)}</span>:<span className="thumb-lines"><i/><i/><i/><i/><i/></span>}
+  {template==='comic'?null:body?<span className="thumb-excerpt">{body.slice(0,220)}</span>:<span className="thumb-lines"><i/><i/><i/><i/><i/></span>}
   {layout?.divider&&layout.divider!=='none'&&<span className="thumb-ornament">{layout.divider==='leaves'?'❧':layout.divider==='stars'?'✦  ✧  ✦':'◆'}</span>}
  </span>;
 }

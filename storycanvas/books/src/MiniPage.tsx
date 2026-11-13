@@ -1,5 +1,6 @@
 'use client';
 import type {CSSProperties, ReactNode} from 'react';
+import {comicOf, panelBoxes, svgPoints} from './comic';
 import {pageDimensions, type Appearance, type Scene} from './model';
 import {decalSource, normalizeLayout} from './design';
 import {paragraphStyleCss} from './paragraph-styles';
@@ -47,7 +48,10 @@ export default function MiniPage({scene, appearance, width, className = '', boos
       ['--mp-gap' as string]: (a.paragraphSpacing ?? 16) + 'px', ['--mp-indent' as string]: (a.paragraphIndent ?? 0) + 'em', ['--mp-align' as string]: a.paragraphAlign ?? 'left', ['--indent-step' as string]: (a.indentStepMm ?? 12.7) * MM + 'px', whiteSpace: 'pre-wrap', tabSize: (a.indentStepMm ?? 12.7) * MM + 'px'} as CSSProperties}>
       {layout.border !== 'none' && <span style={{position: 'absolute', inset: a.margin * MM * .55, border: `${layout.border === 'double' ? 6 : 2}px ${layout.border} #555`}}/>}
       {(scene.decals || []).map(d => { try { return <img key={d.id} src={decalSource(d.src, d.color)} alt="" style={{position: 'absolute', left: d.x + '%', top: d.y + '%', width: d.width + '%', opacity: d.opacity, transform: `rotate(${d.rotation}deg)`}}/>; } catch { return null; } })}
-      {art ? (scene.image ? <img src={scene.image.src} alt="" style={{position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: scene.image.fit || 'contain', filter: scene.template === 'bnw-art' ? 'grayscale(1)' : undefined}}/>
+      {scene.template === 'comic' ? <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{position: 'absolute', inset: 0, width: '100%', height: '100%'}}>
+        {panelBoxes(comicOf(scene), wMm, hMm).map(b => <polygon key={b.index} points={svgPoints(b.shape)} fill={comicOf(scene).panels[b.index]?.assetId ? '#d9d1bf' : '#f6f3ec'} stroke="#111" strokeWidth={Math.max(1, comicOf(scene).borderMm * MM)} vectorEffect="non-scaling-stroke"/>)}
+      </svg>
+      : art ? (scene.image ? <img src={scene.image.src} alt="" style={{position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: scene.image.fit || 'contain', filter: scene.template === 'bnw-art' ? 'grayscale(1)' : undefined}}/>
         : <span style={{position: 'absolute', inset: a.margin * MM, display: 'grid', placeItems: 'center', background: '#f1eee6', color: '#9a917c', fontSize: 40}}>▧</span>)
         : <span className="mini-page-body" style={{display: 'block', position: 'relative'}}>
           {layout.chapterSpacing > 0 && <span style={{display: 'block', height: layout.chapterSpacing * MM * .8}}/>}

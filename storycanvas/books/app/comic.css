@@ -1,0 +1,43 @@
+/* Comic / manga pages in the editor. Shared drawing styles live in src/comic.ts (comicCss). */
+.comic-editor{position:relative;box-sizing:border-box;background:#fff;overflow:visible;user-select:none;font-family:system-ui,sans-serif}
+.paper:has(.comic-editor){overflow:visible!important}
+.comic-editor .comic-panel{cursor:pointer;outline:none}
+.comic-editor .comic-panel.has-art.is-selected{cursor:grab}
+.comic-editor .comic-panel.has-art.is-selected:active{cursor:grabbing}
+.comic-editor .comic-panel:not(.has-art){background:#f6f3ec}
+.comic-editor .comic-panel.is-selected:not(.has-art){background:#e9eef8}
+.comic-editor .comic-panel:focus-visible{background:#e9eef8}
+.comic-empty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:#6b6358}
+.comic-panel-number{font:600 13px/1 system-ui,sans-serif;color:#6b6358}
+.comic-empty button{min-height:36px;padding:6px 14px;border:1px solid var(--ui-line,#e5dcc7);border-radius:9px;background:var(--ui-raised,#fff);color:var(--ui-ink,#2b2416);font:13px system-ui,sans-serif;cursor:pointer}
+.comic-empty button:hover{border-color:var(--ui-accent,#2e5aac)}
+.comic-selection{fill:color-mix(in srgb,var(--ui-accent,#2e5aac) 8%,transparent);stroke:var(--ui-accent,#2e5aac);stroke-width:2px}
+.comic-borders{z-index:2}
+.comic-order{position:absolute;z-index:3;min-width:20px;height:20px;padding:0 4px;box-sizing:border-box;border-radius:10px;background:#2b2416cc;color:#fff;font:600 12px/20px system-ui,sans-serif;text-align:center;pointer-events:none}
+.comic-editor .comic-bubble{z-index:4;cursor:move;touch-action:none}
+.comic-editor .comic-bubble.is-selected{outline:2px solid var(--ui-accent,#2e5aac);outline-offset:3px}
+.comic-editor .comic-bubble textarea{all:unset;display:block;width:100%;box-sizing:border-box;text-align:inherit;font:inherit;line-height:inherit;color:inherit;white-space:pre-wrap;field-sizing:content;resize:none;cursor:text;user-select:text}
+.comic-resize{position:absolute;right:-9px;top:50%;width:12px;height:24px;margin-top:-12px;border-radius:4px;background:var(--ui-accent,#2e5aac);border:2px solid #fff;cursor:ew-resize;touch-action:none}
+.comic-resize:focus-visible{outline:3px solid var(--ui-accent,#2e5aac);outline-offset:2px}
+.comic-toolbar{position:sticky;top:8px;z-index:8;margin:8px;width:fit-content;max-width:calc(100% - 16px);display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px;border-radius:9px;background:var(--ui-raised,#fff);color:var(--ui-ink,#2b2416);box-shadow:0 2px 10px #0003;font:13px/1.3 system-ui,sans-serif}
+.comic-toolbar strong{font-size:13px;font-weight:650;padding:0 4px}
+.comic-toolbar button{min-height:36px;padding:6px 10px;border:1px solid var(--ui-line,#e5dcc7);border-radius:8px;background:var(--ui-surface,#fdfbf4);color:var(--ui-ink,#2b2416);font:13px system-ui,sans-serif;cursor:pointer}
+.comic-toolbar button[aria-pressed=true]{border:2px solid var(--ui-accent,#2e5aac);background:var(--ui-tint,#f8edc8);padding:5px 9px;font-weight:600}
+.comic-toolbar button:disabled{opacity:.45;cursor:default}
+.comic-toolbar select{min-height:36px;max-width:180px;padding:4px 8px;border:1px solid var(--ui-line,#e5dcc7);border-radius:8px;background:var(--ui-field,#fff);color:var(--ui-ink,#2b2416);font:13px system-ui,sans-serif}
+.comic-segmented{display:inline-flex;gap:4px}
+.comic-zoom{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--ui-subtle,#6b6358)}
+.comic-zoom input{width:96px;accent-color:var(--ui-accent,#2e5aac)}
+.comic-divider{width:1px;align-self:stretch;background:var(--ui-line,#e5dcc7)}
+.comic-hint{flex-basis:100%;font-size:12px;color:var(--ui-subtle,#6b6358);padding:0 4px}
+.comic-toolbar :is(button,select):focus-visible{outline:3px solid var(--ui-accent,#2e5aac);outline-offset:2px}
+.bd-comic-layouts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.settings.tool-dialog .bd-comic-layouts button{position:relative;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 4px}
+.bd-comic-layouts .comic-layout-icon{border:1px solid #c9bfa9;background:#fff}
+.bd-comic-layouts span{font-size:11.5px;text-align:center;line-height:1.2}
+.thumb-comic .comic-layout-icon{display:block;width:100%;height:auto;flex:1;margin-top:2px}
+@media print{.comic-editor-only{display:none!important}.comic-editor .comic-panel:not(.has-art){background:#fff}.comic-editor .comic-bubble.is-selected{outline:0}}
+@media(max-width:600px){.bd-comic-layouts{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.bd-gutter{display:flex;width:30px;height:22px}
+.bd-gutter i{flex:1;background:#ece6d8;border:1px solid #3a3326}
+.bd-order{font:600 12px/1 system-ui,sans-serif;letter-spacing:.02em}
