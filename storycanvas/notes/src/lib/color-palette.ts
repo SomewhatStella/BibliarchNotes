@@ -263,15 +263,114 @@ export const DEFAULT_PALETTE: ColorPalette = {
 // that old shape into the real one via the same generateFromCustomColors
 // derivation the picker itself uses, instead of silently discarding the
 // color choice someone actually made.
+//
+// Also repairs a palette with missing or unusable colours field by field (a half-typed "#2E5"
+// from the custom-colour box, a field an older version never wrote) instead of handing CSS
+// an invalid value, which silently left the board unchanged.
 export function normalizePalette(value: unknown): ColorPalette {
   if (!value || typeof value !== "object") return DEFAULT_PALETTE;
   const v = value as Record<string, unknown>;
-  if (v.colors && typeof v.colors === "object") return value as ColorPalette;
+  if (v.colors && typeof v.colors === "object") {
+    const given = v.colors as Record<string, unknown>;
+    const colors = { ...DEFAULT_PALETTE.colors };
+    for (const key of Object.keys(colors) as (keyof ColorPalette["colors"])[]) {
+      const c = given[key];
+      if (typeof c === "string" && isCssColor(c)) colors[key] = c.trim();
+    }
+    return {
+      ...(value as ColorPalette),
+      id: typeof v.id === "string" ? v.id : "custom",
+      name: typeof v.name === "string" ? v.name : "Custom Color Palette",
+      colors,
+    };
+  }
   if (typeof v.main === "string" && typeof v.complementary === "string" && typeof v.accent === "string") {
-    return { ...generateFromCustomColors(v.main, v.complementary, v.accent), id: typeof v.id === "string" ? v.id : `custom-${Date.now()}` };
+    const d = DEFAULT_PALETTE.colors;
+    const pick = (c: string, fallback: string) => (isCssColor(c) ? c : fallback);
+    return {
+      ...generateFromCustomColors(pick(v.main, d.nodeDefault), pick(v.complementary, d.nodeText), pick(v.accent, d.canvasBackground)),
+      id: typeof v.id === "string" ? v.id : "custom-legacy",
+    };
   }
   return DEFAULT_PALETTE;
 }
+
+const HEX = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i;
+export function isHexColor(value: string): boolean {
+  return HEX.test(value.trim());
+}
+// Hex, or an rgb()/hsl() colour an older palette may have stored. Anything else is dropped.
+function isCssColor(value: string): boolean {
+  const v = value.trim();
+  return HEX.test(v) || /^(rgb|rgba|hsl|hsla)\([^()]*\)$/i.test(v);
+}
+
+export function isDefaultPalette(p: ColorPalette): boolean {
+  return p.id === "default" && JSON.stringify(p.colors) === JSON.stringify(DEFAULT_PALETTE.colors);
+}
+
+/** "#abc" / "#aabbcc" -> [h 0-360, s 0-100, l 0-100]; null for anything else. */
+export function hexToHsl(hex: string): [number, number, number] | null {
+  if (!isHexColor(hex)) return null;
+  let h = hex.trim().slice(1);
+  if (h.length === 3) h = h.split("").map((c) => c + c).join("");
+  const [r, g, b] = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16) / 255) as [number, number, number];
+  const max = Math.max(r, g, b), min = Math.min(r, g, b), l = (max + min) / 2;
+  if (max === min) return [0, 0, l * 100];
+  const d = max - min;
+  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+  const hue = max === r ? (g - b) / d + (g < b ? 6 : 0) : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  return [hue * 60, s * 100, l * 100];
+}
+
+function luminance(hex: string): number {
+  const hsl = hexToHsl(hex);
+  if (!hsl) return 1;
+  const [r, g, b] = ColorUtils.hslToRgb(...hsl).map((c) => {
+    const v = c / 255;
+    return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+  }) as [number, number, number];
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+export function contrastRatio(a: string, b: string): number {
+  const [x, y] = [luminance(a), luminance(b)].sort((m, n) => n - m) as [number, number];
+  return (x + 0.05) / (y + 0.05);
+}
+
+const clampN = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+const INK = "#2b2416";
+
+/**
+ * What the board actually paints with. The palette's "main" colour is often a pale fill colour
+ * (every generated preset's is ~85% lightness: storycanvas filled whole cards with it), which
+ * this app only used for a 3px strip, so picking a palette looked like nothing happened. Each
+ * card now gets a tint of the main colour, a strong-enough version of it for the strip and
+ * avatars, and the palette's text colour when it is readable, in both light and dark mode.
+ */
+export function derivePaletteVars(colors: ColorPalette["colors"]): Record<string, string> {
+  const [h, s, l] = hexToHsl(colors.nodeDefault) ?? hexToHsl(DEFAULT_PALETTE.colors.nodeDefault)!;
+  const fillLight = ColorUtils.hslToHex(h, Math.min(s, 65), 93);
+  const text = isHexColor(colors.nodeText) && contrastRatio(colors.nodeText, fillLight) >= 4.5 ? colors.nodeText : INK;
+  return {
+    "--pal-accent-light": ColorUtils.hslToHex(h, s < 8 ? s : clampN(s, 35, 85), clampN(l, 28, 50)),
+    "--pal-accent-dark": ColorUtils.hslToHex(h, s < 8 ? s : clampN(s, 40, 85), clampN(l, 62, 76)),
+    "--pal-fill-light": fillLight,
+    "--pal-fill-dark": ColorUtils.hslToHex(h, Math.min(s, 35), 22),
+    "--pal-text-light": text,
+  };
+}
+
+// A short gallery of ready-made looks, each clearly different on the board.
+export const PALETTE_PRESETS: ColorPalette[] = [
+  DEFAULT_PALETTE,
+  { ...generateFromCustomColors("#C76A82", "#3A1F2B", "#FBEFF2"), id: "preset-rose", name: "Rose garden", description: "Dusty rose cards on a blush board" },
+  { ...generateFromCustomColors("#3E9B5C", "#1E3326", "#EEF5EC"), id: "preset-forest", name: "Forest", description: "Leaf green on a pale moss board" },
+  { ...generateFromCustomColors("#8A5BB8", "#2A1E3A", "#F3EEF9"), id: "preset-lavender", name: "Lavender", description: "Soft violet with ink text" },
+  { ...generateFromCustomColors("#E8A61C", "#3B2A08", "#FDF6E3"), id: "preset-marigold", name: "Marigold", description: "Warm gold on parchment" },
+  { ...generateFromCustomColors("#1F8A9E", "#12323A", "#EAF5F7"), id: "preset-ocean", name: "Ocean", description: "Teal on a sea-glass board" },
+  { ...generateFromCustomColors("#C0552F", "#3A1A0E", "#FBEFE8"), id: "preset-terracotta", name: "Terracotta", description: "Clay orange, warm and earthy" },
+  { ...generateFromCustomColors("#5B6372", "#1F2329", "#F2F3F5"), id: "preset-slate", name: "Slate", description: "Quiet greys, for when colour distracts" },
+];
 
 // All 16 CSS custom properties, same names the real app's
 // ColorPaletteManager.applyPaletteToDOM uses, plus --color-primary-hue
@@ -279,7 +378,11 @@ export function normalizePalette(value: unknown): ColorPalette {
 // off the raw hue.
 export function applyPaletteToDOM(palette: ColorPalette) {
   const root = document.documentElement;
-  const c = palette.colors ?? normalizePalette(palette).colors;
+  const c = normalizePalette(palette).colors;
+  for (const [name, value] of Object.entries(derivePaletteVars(c))) root.style.setProperty(name, value);
+  // board-theme.css keys the card tints off this. Set here too (not only by React) so a live
+  // preview from the palette editor shows before anything is saved.
+  document.querySelector(".notes-board-shell")?.setAttribute("data-default-palette", String(isDefaultPalette(normalizePalette(palette))));
   root.style.setProperty("--color-primary", c.primary);
   root.style.setProperty("--color-primary-text", c.primaryText);
   root.style.setProperty("--color-secondary", c.secondary);
