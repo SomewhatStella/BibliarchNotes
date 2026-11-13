@@ -4,6 +4,7 @@
 // the app; a .docx export is a reasonable fast-follow if asked for.
 import { createClient } from "@/lib/supabase/client";
 import type { CanvasRow, StoryNode } from "@/lib/types";
+import { chartSummary } from "@/lib/charts";
 
 async function loadAllCanvases(storyId: string): Promise<Map<string, CanvasRow>> {
   const supabase = createClient();
@@ -64,7 +65,16 @@ function walk(canvasType: string, canvases: Map<string, CanvasRow>, depth: numbe
       for (const row of n.tableData ?? []) out.push(`${indent}  - ${Object.values(row).join(" | ")}`);
       continue;
     }
-    if (n.type === "image" || n.type === "line") continue;
+    if (n.type === "chart") {
+      out.push(`${indent}${n.text || "Chart"}: ${chartSummary(n.chart)}`);
+      continue;
+    }
+    // A section frame's label reads as a heading; other shapes and pen doodles carry no text.
+    if (n.type === "shape") {
+      if (n.shape?.kind === "frame" && n.text) out.push(`${indent}── ${n.text} ──`);
+      continue;
+    }
+    if (n.type === "image" || n.type === "line" || n.type === "drawing") continue;
 
     out.push(`${indent}${nodeText(n)}`);
     if (n.linkedCanvasId && canvases.has(n.linkedCanvasId)) {

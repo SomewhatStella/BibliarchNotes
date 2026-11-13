@@ -15,7 +15,12 @@ export type NodeType =
   | "table"
   | "relationship-canvas"
   | "line"
-  | "compact-text";
+  | "compact-text"
+  // Newer card types. Older clients don't know them and fall back to a plain
+  // text card showing `text`, so every one of these keeps a sensible `text`.
+  | "drawing"
+  | "shape"
+  | "chart";
 
 export interface NodeSettings {
   locked?: boolean;
@@ -87,6 +92,51 @@ export interface StoryNode {
   // line-only: a curved arrow drawn through three points (same shape storycanvas saves)
   linePoints?: { start: { x: number; y: number }; middle: { x: number; y: number }; end: { x: number; y: number } };
   lineStyle?: { color: string; width: number };
+  // drawing-only: freehand pen strokes, see lib/drawing.ts
+  drawing?: DrawingData;
+  // shape-only: rectangles, ellipses, dividers and section frames, see lib/shapes.ts
+  shape?: ShapeData;
+  // chart-only: radar / bar / pie, see lib/charts.ts
+  chart?: ChartData;
+}
+
+/**
+ * Points are flat [x0, y0, x1, y1, …] in a `w`×`h` space whose origin is the
+ * node's top-left corner. Keeping that space separate from node.width/height
+ * means resizing a drawing just scales it, with no rewrite of every point.
+ */
+export interface DrawingStroke {
+  id: string;
+  points: number[];
+  color: string;
+  width: number;
+}
+export interface DrawingData {
+  w: number;
+  h: number;
+  strokes: DrawingStroke[];
+}
+
+export type ShapeKind = "rect" | "rounded" | "ellipse" | "divider" | "frame";
+export interface ShapeData {
+  kind: ShapeKind;
+  /** Unset = the board's main colour. */
+  stroke?: string;
+  /** Unset = no fill (a frame gets a faint tint of its stroke). */
+  fill?: string;
+  fillOpacity?: number;
+  strokeStyle?: "solid" | "dashed";
+  strokeWidth?: number;
+  /** divider only */
+  orientation?: "horizontal" | "vertical";
+  /** "back" (default) sits behind cards; frames are always behind. */
+  layer?: "back" | "front";
+}
+
+export type ChartKind = "radar" | "bar" | "pie";
+export interface ChartData {
+  kind: ChartKind;
+  data: { label: string; value: number }[];
 }
 
 export type ConnectionType = "leads-to" | "conflicts-with" | "relates-to" | "relationship";
@@ -130,6 +180,9 @@ export const DEFAULT_SIZE: Record<NodeType, { w: number; h: number }> = {
   event: { w: 300, h: 139 },
   image: { w: 240, h: 180 },
   line: { w: 0, h: 0 },
+  drawing: { w: 0, h: 0 },
+  shape: { w: 240, h: 160 },
+  chart: { w: 300, h: 320 },
 };
 
 export const CONNECTION_TYPES: ConnectionType[] = ["leads-to", "conflicts-with", "relates-to"];

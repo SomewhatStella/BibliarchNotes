@@ -1,4 +1,6 @@
 import { DEFAULT_SIZE, type NodeType, type StoryNode } from "./types";
+import { defaultChart } from "./charts";
+import { shapeDefaults } from "./shapes";
 
 export function generateId(prefix = "node"): string {
   if (typeof crypto !== "undefined" && crypto.randomUUID) return `${prefix}-${crypto.randomUUID()}`;
@@ -40,6 +42,15 @@ export function newNode(type: NodeType, overrides: Partial<StoryNode> = {}): Sto
   if (type === "list") {
     base.childIds = [];
     base.layoutMode = "single-column";
+  }
+  if (type === "chart") {
+    base.text = "Stats";
+    base.chart = defaultChart();
+  }
+  if (type === "shape") Object.assign(base, shapeDefaults("rect"));
+  if (type === "drawing") {
+    base.text = "Drawing";
+    base.drawing = { w: 0, h: 0, strokes: [] };
   }
   return { ...base, ...overrides };
 }

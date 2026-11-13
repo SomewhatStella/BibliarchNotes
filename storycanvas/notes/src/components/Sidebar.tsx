@@ -16,9 +16,21 @@ import {
   PanelLeftOpen,
   Spline,
 } from "lucide-react";
-import type { NodeType } from "@/lib/types";
+import type { NodeType, ShapeKind } from "@/lib/types";
 import SidebarToolButton from "./SidebarToolButton";
 import { LayoutTemplate } from "lucide-react";
+import { ChartPie, Circle, Frame, LayoutDashboard, Minus, Network, PenLine, RectangleHorizontal, Shapes, Square, SeparatorVertical } from "lucide-react";
+import ToolFlyout, { FlyoutItem } from "./ToolFlyout";
+import { BOARD_TEMPLATES, type BoardTemplateKey } from "@/lib/family-tree";
+
+const SHAPE_CHOICES: { kind: ShapeKind; orientation?: "horizontal" | "vertical"; label: string; hint: string; icon: React.ReactNode }[] = [
+  { kind: "frame", label: "Section frame", hint: "A labelled box that sits behind cards", icon: <Frame size={15} /> },
+  { kind: "rect", label: "Rectangle", hint: "Square corners", icon: <Square size={15} /> },
+  { kind: "rounded", label: "Rounded rectangle", hint: "Soft corners", icon: <RectangleHorizontal size={15} /> },
+  { kind: "ellipse", label: "Ellipse", hint: "Circle or oval", icon: <Circle size={15} /> },
+  { kind: "divider", orientation: "horizontal", label: "Divider — across", hint: "A straight horizontal rule", icon: <Minus size={15} /> },
+  { kind: "divider", orientation: "vertical", label: "Divider — down", hint: "A straight vertical rule", icon: <SeparatorVertical size={15} /> },
+];
 
 
 // Every tool is its own always-visible button — the original app never
@@ -36,6 +48,7 @@ const TOOLS: { type: NodeType; label: string; icon: React.ReactNode }[] = [
   { type: "compact-text", label: "Sticky", icon: <StickyNote size={16} /> },
   { type: "image", label: "Image", icon: <ImageIcon size={16} /> },
   { type: "line", label: "Line", icon: <Spline size={16} /> },
+  { type: "chart", label: "Chart — stats, bars or pie", icon: <ChartPie size={16} /> },
 ];
 
 // A slim icon rail, not a text sidebar — every button here is a 36px
@@ -53,7 +66,15 @@ export default function Sidebar({
   readOnly = false,
   collapsed,
   onToggleCollapsed,
+  penMode = false,
+  onTogglePenMode,
+  onAddShape,
+  onInsertTemplate,
 }: {
+  penMode?: boolean;
+  onTogglePenMode?: () => void;
+  onAddShape?: (kind: ShapeKind, orientation?: "horizontal" | "vertical") => void;
+  onInsertTemplate?: (key: BoardTemplateKey) => void;
   onManageTypes: () => void;
   onAddNode: (type: NodeType) => void;
   connectMode: boolean;
@@ -94,6 +115,23 @@ export default function Sidebar({
               onClick={onToggleConnectMode}
               active={connectMode}
             />
+            {onTogglePenMode && (
+              <SquareButton icon={<PenLine size={16} />} title={penMode ? "Drawing — click to finish (Esc)" : "Pen — draw doodles"} onClick={onTogglePenMode} active={penMode} />
+            )}
+            {onAddShape && (
+              <ToolFlyout icon={<Shapes size={16} />} title="Shapes">
+                {(close) => SHAPE_CHOICES.map((c) => (
+                  <FlyoutItem key={c.label} icon={c.icon} label={c.label} hint={c.hint} onClick={() => { onAddShape(c.kind, c.orientation); close(); }} />
+                ))}
+              </ToolFlyout>
+            )}
+            {onInsertTemplate && (
+              <ToolFlyout icon={<LayoutDashboard size={16} />} title="Templates" color="#3E9B5C">
+                {(close) => BOARD_TEMPLATES.map((t) => (
+                  <FlyoutItem key={t.key} icon={<Network size={15} />} label={t.label} hint={t.description} onClick={() => { onInsertTemplate(t.key); close(); }} />
+                ))}
+              </ToolFlyout>
+            )}
           </>
         )}
 

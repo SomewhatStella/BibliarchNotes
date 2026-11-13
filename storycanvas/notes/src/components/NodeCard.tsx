@@ -28,6 +28,10 @@ import RelationshipEditor from "./RelationshipEditor";
 import TypeIcon from "./TypeIcon";
 import CustomTypeIcon from "./CustomTypeIcon";
 import { getImageUrl } from "@/lib/storage";
+import { ChartPie } from "lucide-react";
+import DrawingCard from "./DrawingCard";
+import ShapeCard from "./ShapeCard";
+import ChartBody from "./ChartBody";
 
 const FOLDER_ICONS = { folder: Folder, book: BookOpen, archive: Archive, box: Box } as const;
 
@@ -44,6 +48,12 @@ const MIN_RENDER_SIZE: Partial<Record<NodeType, { w: number; h: number }>> = {
   // legible mini canvas once there were more than a few characters.
   "relationship-canvas": { w: 480, h: 360 },
 };
+
+/** The box a card actually occupies on screen (stored size, floored as above) — what alignment snapping lines up. */
+export function renderedSize(node: StoryNode): { w: number; h: number } {
+  const min = MIN_RENDER_SIZE[node.type ?? "text"];
+  return min ? { w: Math.max(node.width, min.w), h: Math.max(node.height, min.h) } : { w: node.width, h: node.height };
+}
 
 const TYPE_ADD_CHOICES: { type: NodeType; label: string }[] = [
   { type: "character", label: "Character" },
@@ -88,6 +98,12 @@ export default function NodeCard({
 }) {
   const [editing, setEditing] = useState<"text" | "content" | "title" | "summary" | "durationText" | null>(null);
   const [draft, setDraft] = useState("");
+
+  // Drawings and shapes have no card chrome at all — they draw their own.
+  if (node.type === "drawing" || node.type === "shape") {
+    const Own = node.type === "drawing" ? DrawingCard : ShapeCard;
+    return <Own node={node} selected={selected} actions={actions} onMouseDownMove={onMouseDownMove} onMouseDownResize={onMouseDownResize} onSelect={onSelect} onOpenInspector={onOpenInspector} readOnly={readOnly} lockedBy={lockedBy} />;
+  }
 
   // Two-tier coloring: a node's own "sub color" (node.color, set from the
   // inspector) wins when set; otherwise every card falls back to the
@@ -206,6 +222,11 @@ export default function NodeCard({
             <>
               <TitleRow icon={<Users size={13} />} node={node} {...edit} />
               <RelationshipEditor node={node} allCharacters={allCharacters} onChange={(patch) => actions.editNode(node.id, patch)} />
+            </>
+          ) : type === "chart" ? (
+            <>
+              <TitleRow icon={<ChartPie size={13} />} node={node} {...edit} />
+              <ChartBody node={node} actions={actions} selected={selected} readOnly={editBlocked} />
             </>
           ) : type === "image" ? (
             <ImageBody node={node} actions={actions} />

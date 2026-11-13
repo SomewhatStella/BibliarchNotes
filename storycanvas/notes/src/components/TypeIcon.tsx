@@ -1,4 +1,4 @@
-import { FileText, User, MapPin, Folder, List as ListIcon, Image as ImageIcon, StickyNote, Table2, Flag, Users, ArrowRight } from "lucide-react";
+import { FileText, User, MapPin, Folder, List as ListIcon, Image as ImageIcon, StickyNote, Table2, Flag, Users, ArrowRight, PenLine, Shapes, ChartPie } from "lucide-react";
 import type { NodeType } from "@/lib/types";
 
 // One icon-per-type map, shared by the sidebar tool palette, list member
@@ -16,6 +16,9 @@ const ICONS: Record<NodeType, React.ComponentType<{ size?: number; className?: s
   "compact-text": StickyNote,
   image: ImageIcon,
   line: ArrowRight,
+  drawing: PenLine,
+  shape: Shapes,
+  chart: ChartPie,
 };
 
 export function iconForType(type: NodeType | string | undefined) {
