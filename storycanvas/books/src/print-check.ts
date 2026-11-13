@@ -4,6 +4,7 @@
  * published guidelines; anything we can only estimate is worded as a suggestion.
  */
 import {pageDimensions, wordCount, type Appearance, type Book, type Scene} from './model';
+import {comicOf, visiblePanels, panelBoxes, artBox} from './comic';
 import {imageData} from './publishing';
 
 export type Printer = 'kdp' | 'ingram' | 'home';
@@ -96,8 +97,13 @@ export function printCheck(book: Book, pages: number, printer: Printer): PrintIs
     const hits = PLACEHOLDERS.filter(p => text.includes(p)).sort((x, y) => text.indexOf(x) - text.indexOf(y));
     if (hits.length) out.push({level: 'warning', title: `Sample text on “${pageName(s)}”`, detail: `${hits.slice(0, 3).map(x => `“${x}”`).join(', ')}${hits.length > 3 ? ' and more' : ''} ${hits.length === 1 ? 'is' : 'are'} from the template. Replace with your own words or delete.`, sceneId: s.id});
     const art = s.template === 'color-art' || s.template === 'bnw-art';
-    if (!wordCount(s.content) && !s.image && !(s.images?.length) && !(s.decals?.length) && !art)
+    const comic = s.template === 'comic';
+    if (!wordCount(s.content) && !s.image && !(s.images?.length) && !(s.decals?.length) && !art && !comic)
       out.push({level: 'warning', title: `“${pageName(s)}” is empty`, detail: 'It will print as a blank page. Add something to it or delete it.', sceneId: s.id});
+    if (comic) {
+      const empty = visiblePanels(comicOf(s)).map((p, i) => p.assetId && book.images?.some(x => x.id === p.assetId) ? 0 : i + 1).filter(Boolean);
+      if (empty.length) out.push({level: 'warning', title: `“${pageName(s)}” has empty panels`, detail: `Panel${empty.length > 1 ? 's' : ''} ${empty.join(', ')} ${empty.length > 1 ? 'have' : 'has'} no art yet and will print blank. Click a panel to add your art.`, sceneId: s.id});
+    }
     if (art && !s.image) out.push({level: 'warning', title: `“${pageName(s)}” has no picture yet`, detail: 'It will print as a blank page until you add artwork.', sceneId: s.id});
   }
   if (/^(untitled book|book name|book title)$/i.test(book.title.trim())) out.push({level: 'warning', title: 'Your book needs a title', detail: 'Click the title at the top of the screen to name it.'});
@@ -112,6 +118,16 @@ export function printCheck(book: Book, pages: number, printer: Printer): PrintIs
       const mm = s.image.mode === 'full' || s.image.mode === 'spread' ? w * (s.image.mode === 'spread' ? 2 : 1) : bodyMm * (s.image.widthPercent ?? 100) / 100;
       const dpi = px / (mm / IN);
       if (px && dpi < 300) out.push({level: dpiNote(dpi), title: `Picture on “${pageName(s)}” may print blurry`, detail: `It’s about ${Math.round(dpi)} dots per inch at this size; printers recommend 300. Use a larger version of the picture, or make it smaller on the page.`, sceneId: s.id});
+    }
+    if (s.template === 'comic') {
+      const c = comicOf(s), panels = visiblePanels(c);
+      for (const b of panelBoxes(c, w, h)) {
+        const asset = book.images?.find(x => x.id === panels[b.index]?.assetId);
+        if (!asset?.naturalWidth) continue;
+        const pa = (b.width * w) / (b.height * h || 1);
+        const mm = w * b.width / 100 * artBox(pa, asset.naturalWidth / asset.naturalHeight, panels[b.index]).width / 100, dpi = asset.naturalWidth / (mm / IN);
+        if (dpi < 300) out.push({level: dpiNote(dpi), title: `Panel ${b.index + 1} on “${pageName(s)}” may print blurry`, detail: `Its art is about ${Math.round(dpi)} dots per inch at this size; printers recommend 300. Use a larger version, or zoom out in the panel.`, sceneId: s.id});
+      }
     }
     for (const p of s.images || []) {
       const asset = book.images?.find(x => x.id === p.assetId);

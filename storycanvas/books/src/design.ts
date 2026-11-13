@@ -11,7 +11,7 @@ export {ORIGINAL_ORNAMENTS} from './original-ornaments';
 export const DECAL_LIBRARY = curatedDecals;
 export const IMAGE_MODES = ['inline','half','full','float-left','float-right','spread'] as const;
 export type ImageMode = typeof IMAGE_MODES[number];
-export type Decal = {id:string;src:string;alt:string;x:number;y:number;width:number;rotation:number;opacity:number;color?:string};
+export type Decal = {id:string;src:string;alt:string;x:number;y:number;width:number;rotation:number;opacity:number;color?:string;/** Which page of the section it sits on; 0 or missing = the first. */page?:number};
 export type PageLayout = {dropCap?:boolean;chapterSpacing:number;titleAlign:'left'|'center'|'right'|'justify';border:'none'|'solid'|'double';divider:'none'|'stars'|'diamond'|'leaves'};
 export type CustomFont = {id:string;family:string;data:string;mime:string;name?:string;license?:string};
 export const MAX_FONT_BYTES = 256 * 1024;
@@ -43,7 +43,7 @@ export function decalSource(src:string,color?:string):string {
 export function assertDesign(scene:any) {
  if(scene.image?.mode!==undefined&&!IMAGE_MODES.includes(scene.image.mode))throw new Error('Invalid image mode');
  if(scene.layout!==undefined){if(!scene.layout||typeof scene.layout!=='object')throw new Error('Invalid layout');const clean=normalizeLayout(scene.layout);for(const key of Object.keys(clean) as (keyof PageLayout)[])if(scene.layout[key]!==undefined&&scene.layout[key]!==clean[key])throw new Error('Invalid layout '+key);}
- if(scene.decals!==undefined){if(!Array.isArray(scene.decals)||scene.decals.length>24)throw new Error('Maximum 24 decals');const ids=new Set();for(const d of scene.decals){if(!d||typeof d.id!=='string'||!/^[\w-]{1,80}$/.test(d.id)||ids.has(d.id)||typeof d.alt!=='string'||d.alt.length>500)throw new Error('Invalid decal');ids.add(d.id);decalSource(d.src,d.color);for(const [k,min,max] of [['x',-200,200],['y',-200,200],['width',1,100],['rotation',-360,360],['opacity',0,1]] as const)if(typeof d[k]!=='number'||!Number.isFinite(d[k])||d[k]<min||d[k]>max)throw new Error('Invalid decal '+k);}}
+ if(scene.decals!==undefined){if(!Array.isArray(scene.decals)||scene.decals.length>24)throw new Error('Maximum 24 decals');const ids=new Set();for(const d of scene.decals){if(!d||typeof d.id!=='string'||!/^[\w-]{1,80}$/.test(d.id)||ids.has(d.id)||typeof d.alt!=='string'||d.alt.length>500)throw new Error('Invalid decal');ids.add(d.id);decalSource(d.src,d.color);for(const [k,min,max] of [['x',-200,200],['y',-200,200],['width',1,100],['rotation',-360,360],['opacity',0,1]] as const)if(typeof d[k]!=='number'||!Number.isFinite(d[k])||d[k]<min||d[k]>max)throw new Error('Invalid decal '+k);if(d.page!==undefined&&(!Number.isInteger(d.page)||d.page<0||d.page>499))throw new Error('Invalid decal page');}}
 }
 export function fontBytes(font:CustomFont):Uint8Array {
  if(!font||!/^font-[a-zA-Z0-9-]{1,80}$/.test(font.id)||font.family!==`Bibliarch-${font.id}`)throw new Error('Invalid font identifier');

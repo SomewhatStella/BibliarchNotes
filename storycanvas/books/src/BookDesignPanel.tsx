@@ -6,6 +6,8 @@ import {fonts, pageDimensions, pageTemplates, type Appearance, type Book, type C
 import {normalizeLayout, readFont, ORNAMENTS, type CustomFont, type PageLayout} from './design';
 import {pageLabels, applyTemplate} from './templates';
 import {PageThumbnail} from './LibraryHome';
+import {COMIC_LAYOUTS, comicOf, setLayout as setComicLayout, type ComicPage} from './comic';
+import {ComicLayoutIcon} from './ComicPage';
 
 /*
  * Book design, written for writers rather than typesetters: every setting is a
@@ -295,6 +297,51 @@ function PaperTab({book, sheets, actions}: {book: Book; sheets: number; actions:
   </>;
 }
 
+const GUTTERS: Option<number>[] = [
+  {value: 0, label: 'None', sample: <span className="bd-gutter" style={{gap: 0}}><i/><i/></span>},
+  {value: 2.5, label: 'Thin', sample: <span className="bd-gutter" style={{gap: 2}}><i/><i/></span>},
+  {value: 4, label: 'Normal', sample: <span className="bd-gutter" style={{gap: 4}}><i/><i/></span>},
+  {value: 7, label: 'Wide', sample: <span className="bd-gutter" style={{gap: 7}}><i/><i/></span>},
+];
+const COMIC_MARGINS: Option<number>[] = [
+  {value: 0, label: 'Edge to edge', hint: 'Art runs off the page; needs bleed when printing', sample: inset(0)},
+  {value: 8, label: 'Slim', sample: inset(6)},
+  {value: 12, label: 'Normal', sample: inset(10)},
+  {value: 18, label: 'Wide', sample: inset(15)},
+];
+const PANEL_BORDERS: Option<number>[] = [
+  {value: 0, label: 'None', sample: <span className="bd-border"/>},
+  {value: 0.35, label: 'Fine', sample: <span className="bd-border solid" style={{borderWidth: 1}}/>},
+  {value: 0.5, label: 'Normal', sample: <span className="bd-border solid"/>},
+  {value: 0.9, label: 'Bold', sample: <span className="bd-border solid" style={{borderWidth: 3}}/>},
+];
+/** Page-level comic settings: panel layout, reading order, gutters, margin and panel borders. */
+function ComicSettings({comic, onChange}: {comic: ComicPage; onChange: (fn: (c: ComicPage) => ComicPage) => void}) {
+  return <section className="bd-section">
+    <h3>Comic layout</h3>
+    <div className="bd-field" role="group" aria-label="Panel layout">
+      <div className="bd-label">Panel layout</div>
+      <div className="bd-comic-layouts">
+        {COMIC_LAYOUTS.map(l => <button key={l.id} type="button" aria-pressed={comic.layout === l.id} title={l.help} onClick={() => onChange(c => setComicLayout(c, l.id))}>
+          <ComicLayoutIcon comic={{...comic, layout: l.id}}/>
+          <span>{l.name}</span>
+          {comic.layout === l.id && <span className="bd-check-badge" aria-hidden="true">✓</span>}
+        </button>)}
+      </div>
+      <p className="bd-help">Switching layouts keeps your art and words. Panels that don’t fit stay saved for when you switch back.</p>
+    </div>
+    <Choice label="Reading order" columns={2} value={comic.rtl ? 'rtl' : 'ltr'} onChange={v => onChange(c => ({...c, rtl: v === 'rtl'}))} options={[
+      {value: 'ltr', label: 'Left to right', hint: 'Western comics', sample: <span className="bd-order">1 → 2</span>},
+      {value: 'rtl', label: 'Right to left', hint: 'Manga: panel 1 starts top right', sample: <span className="bd-order">2 ← 1</span>},
+    ]}/>
+    <Choice label="Space between panels" value={nearest(GUTTERS, comic.gutterMm, 4)} onChange={gutterMm => onChange(c => ({...c, gutterMm}))} options={GUTTERS}/>
+    <Choice label="Space around the panels" value={nearest(COMIC_MARGINS, comic.marginMm, 12)} onChange={marginMm => onChange(c => ({...c, marginMm}))} options={COMIC_MARGINS}
+      help={comic.marginMm === 0 ? 'Printers trim a little off every edge, so keep important art and words away from the outside of the page.' : undefined}/>
+    <Choice label="Panel borders" value={nearest(PANEL_BORDERS, comic.borderMm, 0.5)} onChange={borderMm => onChange(c => ({...c, borderMm}))} options={PANEL_BORDERS}/>
+    <p className="bd-help">Click a panel on the page to add your art, move it around inside the panel, and add speech bubbles or captions.</p>
+  </section>;
+}
+
 function PageTab({book, chapter, scene, pageCount, actions}: {book: Book; chapter: Chapter; scene: Scene; pageCount: number; actions: DesignActions}) {
   const layout = normalizeLayout(scene.layout);
   const template: PageTemplate = scene.template || 'prose';
@@ -321,7 +368,8 @@ function PageTab({book, chapter, scene, pageCount, actions}: {book: Book; chapte
       </div>
       <p className="bd-help">Changing the kind of page changes how it looks. Your words are never deleted.</p>
     </section>
-    <section className="bd-section">
+    {template === 'comic' && <ComicSettings comic={comicOf(scene)} onChange={fn => actions.page(s => ({...s, comic: fn(comicOf(s))}))}/>}
+    {template !== 'comic' && <section className="bd-section">
       <h3>Look of this page</h3>
 
       {<Choice label="Start the text lower on the page" help="Leaves space above the first line, like the opening page of a chapter." options={TITLE_SPACE} value={nearest(TITLE_SPACE, layout.chapterSpacing, 0)} onChange={chapterSpacing => setLayout({chapterSpacing})}/>}
@@ -337,7 +385,7 @@ function PageTab({book, chapter, scene, pageCount, actions}: {book: Book; chapte
       {hasProse && <label className="bd-check"><input type="checkbox" checked={!!layout.dropCap} onChange={e => setLayout({dropCap: e.target.checked})}/>
         <span>Big first letter<small>Makes the first letter of the page large and fancy, like a fairy-tale book.</small></span></label>}
       {isArt && <button type="button" className="bd-wide" onClick={actions.openImage}>Picture settings…</button>}
-    </section>
+    </section>}
     <section className="bd-section">
       <h3>Move or remove</h3>
       <div className="bd-row">

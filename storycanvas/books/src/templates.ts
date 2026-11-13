@@ -1,7 +1,8 @@
 import {newBook, uid, type Book, type Chapter, type PageTemplate, type Scene} from './model';
 import type {PageLayout} from './design';
 import {heading, para, doc, hasHeading, chapterWord} from './paragraph-styles';
-export const pageLabels: Record<PageTemplate,string> = {'book-front':'Title page','chapter-title':'Chapter opener',prose:'Writing page','color-art':'Illustration','bnw-art':'Black & white art',characters:'Characters',afterword:'Afterword','back-cover':'Back cover',copyright:'Copyright',toc:'Contents'};
+import {newComic} from './comic';
+export const pageLabels: Record<PageTemplate,string> = {'book-front':'Title page','chapter-title':'Chapter opener',prose:'Writing page','color-art':'Illustration','bnw-art':'Black & white art',characters:'Characters',afterword:'Afterword','back-cover':'Back cover',copyright:'Copyright',toc:'Contents',comic:'Comic page'};
 export const pageStyles: {id:string;name:string;layout:PageLayout}[] = [
  {id:'minimal',name:'Minimal',layout:{titleAlign:'left',chapterSpacing:0,border:'none',divider:'none'}},
  {id:'classic',name:'Classic',layout:{titleAlign:'center',chapterSpacing:24,border:'none',divider:'diamond'}},
@@ -40,13 +41,15 @@ const copyrightBlocks=(author='Author Name')=>[
 export function styledPage(template:PageTemplate, style:string, opts:{chapter?:number}={}):Scene {
  const layout={...(pageStyles.find(s=>s.id===style)||pageStyles[0]).layout,...(template==='chapter-title'?{titleAlign:'center' as const}:{})};
  const align=layout.titleAlign==='left'||layout.titleAlign==='justify'?'':layout.titleAlign;
- return {id:uid(),title:pageLabels[template],template,inlineTitle:true,content:doc(starterBlocks(template,{chapter:opts.chapter,align})),layout};
+ return {id:uid(),title:pageLabels[template],template,inlineTitle:true,content:doc(starterBlocks(template,{chapter:opts.chapter,align})),layout,...(template==='comic'?{comic:newComic()}:{})};
 }
 /** Chapter number for a new chapter opener: one more than the chapter openers already in the book. */
 export const nextChapterNumber=(b:Book)=>b.chapters.flatMap(c=>c.scenes).filter(s=>s.template==='chapter-title').length+1;
 /** Changing the kind of page: if it gains a title and has none yet, give it one as normal editable text. */
 export function applyTemplate(scene:Scene, template:PageTemplate, book?:Book):Scene {
- const titled=!['prose','color-art','bnw-art'].includes(template);
+ const titled=!['prose','color-art','bnw-art','comic'].includes(template);
+ // A comic page keeps any panels it had before; switching away keeps them too, for switching back.
+ if(template==='comic')return {...scene,template,comic:scene.comic??newComic()};
  if(!titled||hasHeading(scene.content))return {...scene,template};
  const align=scene.layout?.titleAlign&&scene.layout.titleAlign!=='left'&&scene.layout.titleAlign!=='justify'?scene.layout.titleAlign:(template==='chapter-title'||template==='book-front'?'center':'');
  const head=starterBlocks(template,{chapter:book?nextChapterNumber(book):1,title:template==='book-front'?book?.title:undefined,align}).filter(b=>b.type==='heading');
@@ -60,7 +63,7 @@ export function inlineTitles(book:Book):Book {
  let chapterNo=0;
  const chapters=book.chapters.map(c=>({...c,scenes:c.scenes.map(s=>{
   if(s.template==='chapter-title')chapterNo++;
-  if(s.inlineTitle||!s.template||s.template==='prose'||s.template==='color-art'||s.template==='bnw-art')return s;
+  if(s.inlineTitle||!s.template||s.template==='prose'||s.template==='color-art'||s.template==='bnw-art'||s.template==='comic')return s;
   const align=s.layout?.titleAlign&&s.layout.titleAlign!=='left'&&s.layout.titleAlign!=='justify'?s.layout.titleAlign:'';
   const title=s.template==='book-front'?book.title:s.title;
   const head:Block[]=[];

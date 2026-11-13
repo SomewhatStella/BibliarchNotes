@@ -24,6 +24,7 @@ Open http://localhost:3210. Production: `npm run build` then `npm start -- --hos
 
 ## Art and publishing
 
+- Comic / manga pages (page type “Comic page”): panel layouts (action with slanted gutters, six-grid, big panel + 2, 4-koma strip, four-grid, three tiers, full splash), left-to-right or right-to-left (manga) reading order, gutter/margin/border choices in Book design → This page, per-panel art from the book’s picture library with fill/fit, zoom and drag-to-reposition, and speech/thought/caption boxes. Art is the writer’s own; there is no drawing tool.
 - PNG/JPEG/WebP images attached to their authoring page. Width, rotation, opacity, crop/focal point, alt text and caption controls. Black-and-white preset is a reversible display filter.
 - Local image limit 1.5 MB each; total JSON library limit 4 MB. Low-resolution warnings.
 - Real paginated PDF download and PDF preview through local Chromium. Text reflows across print pages; separate print sections start on new pages.

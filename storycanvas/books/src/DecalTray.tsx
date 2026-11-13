@@ -7,6 +7,7 @@ import {MODERN_ORNAMENTS,decalSource,type Decal} from './design';
 import {artworkOverflowCss} from './artwork-overflow';
 import type {Scene} from './model';
 import DecalReplacementChooser from './DecalReplacementChooser';
+import {placeDecal,pageIndexOf,moveDecalToPage,MAX_DECALS} from './decal-placement';
 const clamp=(n:number,min=0,max=100)=>Math.max(min,Math.min(max,n));
 // Update both representations during a gesture, without saving on every pointer event.
 function preview(id:string,patch:Partial<Decal>){
@@ -42,7 +43,20 @@ export default function DecalTray({scenes,onChange,visible=true}:{scenes:Scene[]
    g.patch=g.resize?{width:clamp(g.original.width+dx,1,100)}:{x:clamp(g.original.x+dx,-200,200),y:clamp(g.original.y+dy,-200,200)};
    preview(g.id!,g.patch);if(g.el)setBox(g.el.getBoundingClientRect());
   };
-  const up=(e:globalThis.PointerEvent)=>{const g=gesture.current;gesture.current=null;clearGuides();setGhost(null);if(!g)return;if(g.src){const tap=isTap(e,g.startX,g.startY);const page=tap?visiblePage()?.closest<HTMLElement>('.paper')?.querySelector<HTMLElement>('.pagination-page'):document.elementFromPoint(e.clientX,e.clientY)?.closest<HTMLElement>('.pagination-page');const paper=page?.closest<HTMLElement>('.paper');if(!page||!paper)return;if(paper.querySelector('.pagination-page')!==page){setMessage('Ornaments go on the first page of each section. Try dropping it there.');return;}const id=paper.id.replace('page-',''),r=page.getBoundingClientRect();if((latest.current.scenes.find(s=>s.id===id)?.decals?.length||0)>=24){setMessage('This page already has 24 ornaments, the most it can hold. Remove one to add another.');return;}setMessage(tap?'Ornament added. Tap it, then drag it where you like.':'Ornament added. Click it, then drag to move it.');if(tap)page.scrollIntoView({block:'center'});latest.current.onChange(id,s=>({...s,decals:(s.decals||[]).length>=24?s.decals:[...(s.decals||[]),{id:crypto.randomUUID(),src:g.src!,alt:g.alt!,x:tap?40:clamp((e.clientX-r.left)/r.width*100,0,80),y:tap?35:clamp((e.clientY-r.top)/r.height*100,0,98),width:20,rotation:0,opacity:1}]}));}else if(g.scene&&g.patch)latest.current.onChange(g.scene,s=>({...s,decals:s.decals?.map(d=>d.id===g.id?{...d,...g.patch}:d)}));};
+  const up=(e:globalThis.PointerEvent)=>{const g=gesture.current;gesture.current=null;clearGuides();setGhost(null);if(!g)return;if(g.src){const tap=isTap(e,g.startX,g.startY);
+   // Any page of a section is a valid target: a long chapter flows over several pages and its later scene breaks are on page 2, 3...
+   const page=tap?visiblePage():document.elementFromPoint(e.clientX,e.clientY)?.closest<HTMLElement>('.pagination-page');const paper=page?.closest<HTMLElement>('.paper');if(!page||!paper){setMessage('Drop the ornament onto a page.');return;}
+   const id=paper.id.replace('page-',''),r=page.getBoundingClientRect(),scene=latest.current.scenes.find(s=>s.id===id);if(!scene)return;
+   const placed=placeDecal(scene,{pageIndex:pageIndexOf(paper.querySelectorAll('.pagination-page'),page),x:tap?40:(e.clientX-r.left)/r.width*100,y:tap?35:(e.clientY-r.top)/r.height*100,src:g.src!,alt:g.alt!,id:crypto.randomUUID()});
+   if(placed.error){setMessage(placed.error);return;}
+   setMessage(tap?'Ornament added. Tap it, then drag it where you like.':'Ornament added. Click it, then drag to move it.');if(tap)page.scrollIntoView({block:'center'});
+   const added=placed.scene.decals![placed.scene.decals!.length-1];latest.current.onChange(id,s=>(s.decals||[]).length>=MAX_DECALS?s:{...s,decals:[...(s.decals||[]),added]});}
+  else if(g.scene&&g.patch){
+   // Released over another page of the same section: the ornament moves to that page.
+   const over=g.patch.x!==undefined&&g.el&&g.start?document.elementsFromPoint(e.clientX,e.clientY).find(el=>!el.closest('[data-decal-id],[data-decal-proxy]'))?.closest<HTMLElement>('.pagination-page'):null,paper=g.page?.closest<HTMLElement>('.paper');
+   if(over&&over!==g.page&&paper&&over.closest('.paper')===paper){const box=g.el!.getBoundingClientRect(),index=pageIndexOf(paper.querySelectorAll('.pagination-page'),over),rect=over.getBoundingClientRect();latest.current.onChange(g.scene,s=>({...s,decals:s.decals?.map(d=>d.id===g.id?moveDecalToPage(d,index,box.top,box.left,rect):d)}));setSelected(null);}
+   else latest.current.onChange(g.scene,s=>({...s,decals:s.decals?.map(d=>d.id===g.id?{...d,...g.patch}:d)}));}
+ };
   const cancel=()=>{clearGuides();const g=gesture.current;if(g?.id&&g.original)preview(g.id,g.original);gesture.current=null;setGhost(null);if(g?.el)setBox(g.el.getBoundingClientRect());};
   const key=(e:KeyboardEvent)=>{const cur=selection.current;if((e.key==='Delete'||e.key==='Backspace')&&cur&&!replacingRef.current&&!(e.target as HTMLElement)?.closest?.('input,textarea,select,[contenteditable=true]')){e.preventDefault();setSelected(null);latest.current.onChange(cur.scene,s=>({...s,decals:s.decals?.filter(d=>d.id!==cur.id)}));return;}if(e.key==='Escape'){cancel();if(replacingRef.current){setReplacing(false);replaceButton.current?.focus();}else setSelected(null);}};
   const click=(e:MouseEvent)=>{const hit=(e.target as HTMLElement).closest<HTMLElement>('[data-decal-id],[data-decal-proxy]');if(!hit)return;e.stopPropagation();const id=hit.dataset.decalId||hit.dataset.decalProxy!;const target=document.querySelector<HTMLElement>(`[data-decal-id="${id}"]`),scene=target?.closest('.paper')?.id.replace('page-','');if(target&&scene){setSelected({scene,id});setBox(target.getBoundingClientRect());}};

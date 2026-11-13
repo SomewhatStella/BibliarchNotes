@@ -9,6 +9,9 @@ import {restoreWorkspace,WORKSPACE_KEY} from '../src/workspace';
 import {searchDocument} from '../src/documentSearch';
 import OverlayTextTools from '../src/OverlayTextTools';
 import IllustrationPage from '../src/IllustrationPage';
+import ComicPage from '../src/ComicPage';
+import {comicOf, visiblePanels} from '../src/comic';
+import './comic.css';
 import BookPreview, {type BookView} from '../src/BookPreview';
 import './book-preview.css';
 import {isIllustration} from '../src/artwork';
@@ -485,6 +488,7 @@ export default function Studio({userId}:{userId:string}) {
           overlay: s.overlay,
           decals: s.decals,
           layout: s.layout,
+          comic: s.template === 'comic' ? (() => { const c = comicOf(s); return {...c, art: visiblePanels(c).map(p => { const im = book.images?.find(x => x.id === p.assetId); return im ? {src: im.src, width: im.naturalWidth, height: im.naturalHeight} : null; })}; })() : undefined,
           chapterStart: c.scenes[0].id === s.id && !c.folder,
           chapter: !c.folder && !/^(front|back) matter$/i.test(c.title.trim()) ? c.title : undefined,
           inlineTitle: s.inlineTitle || undefined,
@@ -591,6 +595,28 @@ export default function Studio({userId}:{userId:string}) {
     if((current.images?.length||0)>=100)throw Error('Image library is full (100 pictures).');
     update(b=>({...b,images:[...(b.images||[]),{id:uid(),src,name:file.name,naturalWidth:image.naturalWidth,naturalHeight:image.naturalHeight}]}));
     setBookView('write');setPanel('');setToolTab('Image');
+  }
+  /** A comic panel's art goes into the book's picture library like any other picture, and the panel points at it. */
+  async function addComicArt(file: File, targetId: string, index: number) {
+    const problem = validateImage(file);
+    if (problem) { setError(problem); return; }
+    const src = await new Promise<string>((resolve, reject) => { const r = new FileReader(); r.onload = () => resolve(String(r.result)); r.onerror = reject; r.readAsDataURL(file); });
+    const image = new Image();
+    image.src = src;
+    await image.decode();
+    if (image.naturalWidth * image.naturalHeight > 16000000) throw Error('Image exceeds 16 megapixels; resize it before importing.');
+    const live = latest.current!;
+    if (live.activeBook !== book.id) throw Error('Book changed. Please add the picture again.');
+    const current = live.books.find(b => b.id === book.id)!;
+    if (!current.chapters.some(c => c.scenes.some(s => s.id === targetId))) throw Error('This page was removed. Please choose another page.');
+    if ((current.images?.length || 0) >= 100) throw Error('Image library is full (100 pictures).');
+    const id = uid();
+    update(b => ({...b, images: [...(b.images || []), {id, src, name: file.name, naturalWidth: image.naturalWidth, naturalHeight: image.naturalHeight}],
+      chapters: b.chapters.map(c => ({...c, scenes: c.scenes.map(s => {
+        if (s.id !== targetId) return s;
+        const comic = comicOf(s);
+        return {...s, comic: {...comic, panels: comic.panels.map((p, k) => k === index ? {...p, assetId: id, focusX: 50, focusY: 50, zoom: 1} : p)}};
+      })}))}));
   }
   const movePage = (delta: number) =>
     update((b) => ({
@@ -905,7 +931,7 @@ export default function Studio({userId}:{userId:string}) {
                 onFocusCapture={() => select(s.id)}
                 onClick={() => select(s.id)}
                 onDragOverCapture={e=>{if(e.dataTransfer.types.includes('Files'))e.preventDefault();}}
-                onDropCapture={e=>{const file=e.dataTransfer.files?.[0];if(file){e.preventDefault();e.stopPropagation();select(s.id);void importImage(file,s.id,true).catch(err=>setError(friendlyError(err)));}}}
+                onDropCapture={e=>{const file=e.dataTransfer.files?.[0];if(file&&s.template!=='comic'){e.preventDefault();e.stopPropagation();select(s.id);void importImage(file,s.id,true).catch(err=>setError(friendlyError(err)));}}}
                 style={
                   {
                     width: width * 3.78,
@@ -921,7 +947,7 @@ export default function Studio({userId}:{userId:string}) {
               >
 
                 {sequence.blanks[s.id]&&<div className="recto-blank" aria-label="Intentional blank page" style={{width:width*3.78,height:height*3.78,background:'white',marginBottom:24,border:'1px solid #ddd'}}/>}
-                {isIllustration(s.template)?<IllustrationPage assets={book.images} scene={s} width={width*3.78} height={height*3.78} onUpload={file=>{void importImage(file,s.id,true).catch(err=>setError(friendlyError(err)))}} onEdit={()=>{select(s.id);setPanel('image')}} onChange={patch=>{if('image' in patch&&patch.image===undefined)update(b=>addRevision(b,'Before removing picture'));editPage(s.id,x=>({...x,...patch}));}}/>:<Editor customFonts={(book.customFonts||[]).map(font=>font.family)} content={s.content} active={s.id===scene.id} toolbarHost={host}
+                {s.template==='comic'?<ComicPage scene={s} assets={book.images} width={width*3.78} height={height*3.78} widthMm={width} heightMm={height} onChange={comic=>editPage(s.id,x=>({...x,comic}))} onUploadArt={(file,index)=>{select(s.id);void addComicArt(file,s.id,index).catch(err=>setError(friendlyError(err)))}} onOpenLayout={()=>{select(s.id);openDesign('This page')}}/>:isIllustration(s.template)?<IllustrationPage assets={book.images} scene={s} width={width*3.78} height={height*3.78} onUpload={file=>{void importImage(file,s.id,true).catch(err=>setError(friendlyError(err)))}} onEdit={()=>{select(s.id);setPanel('image')}} onChange={patch=>{if('image' in patch&&patch.image===undefined)update(b=>addRevision(b,'Before removing picture'));editPage(s.id,x=>({...x,...patch}));}}/>:<Editor customFonts={(book.customFonts||[]).map(font=>font.family)} content={s.content} active={s.id===scene.id} toolbarHost={host}
                   pageMetrics={{startPage:sequence.starts[s.id],widthPx:width*3.78,heightPx:height*3.78,marginPx:a.margin*3.78,
                     insidePx:a.mirror?(a.insideMm??a.margin)*3.78:undefined,outsidePx:a.mirror?(a.outsideMm??a.margin)*3.78:undefined,
                     guides:a.guides,header:a.header?.replaceAll('{title}',book.title),headerRecto:a.header==='{title}'&&!/^(front|back) matter$/i.test(c.title.trim())&&!c.folder?c.title:undefined,footer:a.footer?.replaceAll('{title}',book.title),

@@ -1,6 +1,7 @@
 import {decalSource, ORNAMENTS, normalizeLayout} from '../design';
 import type {PageMetrics} from './nodes';
 import {wrapShape} from '../contour';
+import {decalsOnPage} from '../decal-placement';
 // All furniture is created with textContent / vetted image URLs, never user HTML.
 export function decoratePage(page:HTMLElement,body:HTMLElement,prefix:HTMLElement,m:PageMetrics,index:number){
  const scene=m.view,layout=normalizeLayout(scene?.layout),isFirst=index===0,mode=scene?.image?.mode||'inline';
@@ -56,7 +57,8 @@ export function decoratePage(page:HTMLElement,body:HTMLElement,prefix:HTMLElemen
   }else{img.dataset.decoration='true';img.style.position='absolute';img.style.left=p.x+'%';img.style.top=p.y+'%';img.style.zIndex='4';page.append(img);}
  }
 
- if(isFirst)for(const d of scene?.decals||[]){try{
+ // Each ornament is drawn on the page of the section it was placed on (e.g. a scene break on page 3).
+ for(const d of decalsOnPage(scene?.decals,index)){try{
   for(const ghost of [false,true]){
    const layer=document.createElement('div');layer.dataset.decoration='true';layer.contentEditable='false';layer.className=ghost?'artwork-overflow-ghost decal-overflow-ghost':'artwork-clip';layer.style.zIndex='1';if(ghost)layer.setAttribute('aria-hidden','true');
    const img=document.createElement('img');if(ghost)img.dataset.decalProxy=d.id;else img.dataset.decalId=d.id;img.draggable=false;img.contentEditable='false';img.className='decal';img.src=decalSource(d.src,d.color);img.alt=ghost?'':d.alt;img.style.cssText=`position:absolute;left:${d.x}%;top:${d.y}%;width:${d.width}%;height:auto;max-width:none;transform:rotate(${d.rotation}deg);opacity:${d.opacity};pointer-events:auto;`;layer.append(img);page.append(layer);
