@@ -4,6 +4,8 @@ import { useRef } from "react";
 import { Lock, Unlock, X } from "lucide-react";
 import type { NodeSettings, StoryNode } from "@/lib/types";
 import TypeIcon from "./TypeIcon";
+import { ShapeStyleSection } from "./ShapeCard";
+import { DrawingStyleSection } from "./DrawingCard";
 
 const FONTS: NonNullable<NodeSettings["font"]>[] = ["default", "serif", "rounded", "handwritten", "display", "mono"];
 const SIZES: NonNullable<NodeSettings["text_size"]>[] = ["normal", "large", "huge"];
@@ -29,6 +31,8 @@ export default function NodeInspector({
   function patchSettings(p: Partial<NodeSettings>) {
     onChange({ settings: { ...settings, ...p } });
   }
+  // Drawings and shapes have no text to style; their own colour controls replace font/size/sub colour.
+  const graphic = node.type === "shape" || node.type === "drawing";
 
 
 
@@ -42,7 +46,7 @@ export default function NodeInspector({
         <div className="flex h-8 w-8 flex-none items-center justify-center rounded-lg text-white" style={{ background: accent }}>
           <TypeIcon type={node.type} size={15} />
         </div>
-        <p className="min-w-0 flex-1 truncate font-display text-[14.5px] font-semibold text-ink-900">{node.text || node.title || "Card"}</p>
+        <p className="min-w-0 flex-1 truncate font-display text-[14.5px] font-semibold text-ink-900">{node.text || node.title || (node.type === "shape" ? "Shape" : "Card")}</p>
         <button aria-label="Close card style" onClick={onClose} className="flex-none rounded-full p-1 text-ink-500 hover:bg-ink-900/5">
           <X size={15} />
         </button>
@@ -58,6 +62,10 @@ export default function NodeInspector({
         {settings.locked ? "Locked in place" : "Unlocked"}
       </button>
 
+      {node.type === "shape" && <ShapeStyleSection node={node} onChange={onChange} />}
+      {node.type === "drawing" && <DrawingStyleSection node={node} onChange={onChange} />}
+
+      {!graphic && <>
       <Section label="Font">
         <PillGroup
           options={FONTS}
@@ -73,6 +81,7 @@ export default function NodeInspector({
           onChange={(v) => patchSettings({ text_size: v as NodeSettings["text_size"] })}
         />
       </Section>
+      </>}
 
       {(node.type === "character" || node.type === "location") && (
         <Section label="Picture shape">
@@ -104,7 +113,7 @@ export default function NodeInspector({
         </Section>
       )}
 
-      <Section label="Sub color">
+      {!graphic && <Section label="Sub color">
         <div className="flex items-center gap-2.5">
           <button
             onClick={() => colorInputRef.current?.click()}
@@ -127,7 +136,7 @@ export default function NodeInspector({
             <span className="text-[11.5px] text-ink-500">using the board&rsquo;s main color</span>
           )}
         </div>
-      </Section>
+      </Section>}
     </div>
   );
 }

@@ -90,7 +90,9 @@ export function packDrawing(strokes: WorldStroke[]): { x: number; y: number; wid
   if (!b) return null;
   const x = Math.round(b.x - PAD), y = Math.round(b.y - PAD);
   const w = Math.ceil(b.w + PAD * 2), h = Math.ceil(b.h + PAD * 2);
-  const round = (v: number) => Math.round(v * 10) / 10;
+  // Half-pixel precision: invisible at any zoom, and keeps a busy board's
+  // JSON (sent whole on every realtime broadcast) noticeably smaller.
+  const round = (v: number) => Math.round(v * 2) / 2;
   return {
     x, y, width: w, height: h,
     drawing: {
