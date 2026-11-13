@@ -20,6 +20,7 @@ import {
   Upload,
   CornerRightDown,
   SlidersHorizontal,
+  Trash2,
 } from "lucide-react";
 import type { NodeType, StoryNode } from "@/lib/types";
 import type { BoardActions, LockedNodeInfo } from "./CanvasView";
@@ -176,14 +177,16 @@ export default function NodeCard({
               <SlidersHorizontal size={12} />
             </button>
             <button
+              title="Delete card (Del) — it goes to Recently deleted"
+              aria-label="Delete card"
               onMouseDown={(e) => e.stopPropagation()}
               onClick={(e) => {
                 e.stopPropagation();
                 actions.deleteNode(node.id);
               }}
-              className="rounded-full bg-editor-raised/80 p-1 text-ink-500 hover:bg-bibliarch-rose/15 hover:text-bibliarch-rose"
+              className="flex items-center gap-1 rounded-full bg-editor-raised/80 px-1.5 py-1 text-[11px] font-semibold text-ink-500 hover:bg-bibliarch-rose/15 hover:text-bibliarch-rose"
             >
-              <X size={12} />
+              <Trash2 size={12} /> Delete
             </button>
           </div>
         )}
@@ -198,7 +201,7 @@ export default function NodeCard({
           ) : type === "list" ? (
             <ListBody node={node} allNodes={allNodes} actions={actions} {...edit} />
           ) : type === "table" ? (
-            <TableBody node={node} actions={actions} showControls={selected && !editBlocked} />
+            <TableBody node={node} actions={actions} showControls={selected && !editBlocked} readOnly={editBlocked} />
           ) : type === "relationship-canvas" ? (
             <>
               <TitleRow icon={<Users size={13} />} node={node} {...edit} />
@@ -419,41 +422,58 @@ function ImageBody({ node, actions }: { node: StoryNode; actions: BoardActions }
 // A real table: ruled cells on every side, a shaded header row tinted from
 // the node's own color, zebra striping, and row/column delete affordances
 // — not the bare borderless input grid this used to be.
-function TableBody({ node, actions, showControls }: { node: StoryNode; actions: BoardActions; showControls: boolean }) {
+function TableBody({ node, actions, showControls, readOnly = false }: { node: StoryNode; actions: BoardActions; showControls: boolean; readOnly?: boolean }) {
   const rows = node.tableData && node.tableData.length > 0 ? node.tableData : [{ "Column A": "", "Column B": "" }];
   const columns = Object.keys(rows[0] ?? {});
   const accent = node.color || "var(--color-node-default)";
+  // Every edit builds on the rows as last written, not the ones captured at
+  // render: dragging the grow handle adds a row AND a column in one event,
+  // and with the render-time copy the column add silently dropped the row.
+  const latest = useRef(rows);
+  latest.current = rows;
 
   function commit(nextRows: Record<string, string>[]) {
+    latest.current = nextRows;
     actions.editNode(node.id, { tableData: nextRows });
   }
+  function cols() {
+    return Object.keys(latest.current[0] ?? {});
+  }
   function setCell(r: number, col: string, value: string) {
-    const next = rows.map((row, i) => (i === r ? { ...row, [col]: value } : row));
-    commit(next);
+    commit(latest.current.map((row, i) => (i === r ? { ...row, [col]: value } : row)));
   }
   function addRow() {
-    const blank = Object.fromEntries(columns.map((c) => [c, ""]));
-    commit([...rows, blank]);
+    const blank = Object.fromEntries(cols().map((c) => [c, ""]));
+    commit([...latest.current, blank]);
   }
   function removeRow(r: number) {
-    commit(rows.filter((_, i) => i !== r));
+    commit(latest.current.filter((_, i) => i !== r));
   }
   function addColumn() {
-    const nextCol = `Column ${String.fromCharCode(65 + columns.length)}`;
-    commit(rows.map((row) => ({ ...row, [nextCol]: "" })));
+    // The old "Column + next letter" reused an existing name after a delete (A, C → "Column C")
+    // and blanked that column's contents. Pick a name that isn't taken.
+    const taken = new Set(cols());
+    let i = taken.size;
+    let nextCol = "";
+    do nextCol = `Column ${i < 26 ? String.fromCharCode(65 + i) : i + 1}`;
+    while (taken.has(nextCol) && ++i < 1000);
+    commit(latest.current.map((row) => ({ ...row, [nextCol]: "" })));
   }
   function removeColumn(col: string) {
-    if (columns.length <= 1) return;
-    commit(rows.map((row) => Object.fromEntries(Object.entries(row).filter(([k]) => k !== col))));
+    if (cols().length <= 1) return;
+    commit(latest.current.map((row) => Object.fromEntries(Object.entries(row).filter(([k]) => k !== col))));
   }
-  function renameColumn(oldName: string, newName: string) {
-    if (!newName || newName === oldName) return;
+  function renameColumn(oldName: string, newName: string): boolean {
+    if (!newName || newName === oldName) return false;
+    // Renaming onto an existing column merged the two and lost one column's text.
+    if (cols().includes(newName)) return false;
     commit(
-      rows.map((row) => {
+      latest.current.map((row) => {
         const entries = Object.entries(row).map(([k, v]) => (k === oldName ? [newName, v] : [k, v]));
         return Object.fromEntries(entries) as Record<string, string>;
       })
     );
+    return true;
   }
 
   // The table IS the node — no title bar, no margin around it, matching
@@ -475,7 +495,7 @@ function TableBody({ node, actions, showControls }: { node: StoryNode; actions: 
         <thead className="h-7">
           <tr>
             {columns.map((col) => (
-              <ColumnHeader key={col} name={col} accent={accent} onRename={(n) => renameColumn(col, n)} onRemove={() => removeColumn(col)} canRemove={columns.length > 1} />
+              <ColumnHeader key={col} name={col} accent={accent} onRename={(n) => renameColumn(col, n)} onRemove={() => removeColumn(col)} canRemove={columns.length > 1 && !readOnly} readOnly={readOnly} />
             ))}
             <th className="w-6 border-b" style={{ borderColor: accent, background: `color-mix(in oklab, ${accent} 16%, var(--editor-card-bg, white))` }} />
           </tr>
@@ -490,22 +510,26 @@ function TableBody({ node, actions, showControls }: { node: StoryNode; actions: 
                   className="px-2 py-1 text-ink-700"
                   style={{ borderBottom: "1px solid rgba(0,0,0,0.08)", borderRight: c < columns.length - 1 ? "1px solid rgba(0,0,0,0.08)" : undefined }}
                 >
-                  <input
+                  <TableCell
                     value={row[col] ?? ""}
-                    onChange={(e) => setCell(r, col, e.target.value)}
-                    onMouseDown={(e) => e.stopPropagation()}
-                    className="w-full bg-transparent outline-none"
+                    readOnly={readOnly}
+                    onChange={(v) => setCell(r, col, v)}
+                    onFocus={() => actions.lockNode(node.id, "tableData")}
+                    onBlur={() => actions.unlockNode(node.id)}
                   />
                 </td>
               ))}
               <td className="border-b border-l border-ink-900/8 text-center">
-                <button
-                  onMouseDown={(e) => e.stopPropagation()}
-                  onClick={() => removeRow(r)}
-                  className="text-ink-500/0 hover:text-bibliarch-rose group-hover:text-ink-500/60"
-                >
-                  <X size={11} />
-                </button>
+                {!readOnly && (
+                  <button
+                    title="Delete row"
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={() => removeRow(r)}
+                    className="text-ink-500/0 hover:text-bibliarch-rose group-hover:text-ink-500/60"
+                  >
+                    <X size={11} />
+                  </button>
+                )}
               </td>
             </tr>
           ))}
@@ -514,6 +538,36 @@ function TableBody({ node, actions, showControls }: { node: StoryNode; actions: 
       </div>
       {showControls && <TableGrowHandle accent={accent} onAddRow={addRow} onAddColumn={addColumn} />}
     </div>
+  );
+}
+
+// While a cell has focus it shows what you're typing, not the stored value
+// coming back through a re-render — so a save, a collaborator's broadcast or
+// an undo elsewhere can't reset the caret or swallow keystrokes mid-word.
+function TableCell({ value, readOnly, onChange, onFocus, onBlur }: { value: string; readOnly: boolean; onChange: (v: string) => void; onFocus: () => void; onBlur: () => void }) {
+  const [draft, setDraft] = useState<string | null>(null);
+  return (
+    <input
+      value={draft ?? value}
+      readOnly={readOnly}
+      onFocus={() => {
+        if (readOnly) return;
+        setDraft(value);
+        onFocus();
+      }}
+      onChange={(e) => {
+        if (readOnly) return;
+        setDraft(e.target.value);
+        onChange(e.target.value);
+      }}
+      onBlur={() => {
+        if (draft === null) return;
+        setDraft(null);
+        onBlur();
+      }}
+      onMouseDown={(e) => e.stopPropagation()}
+      className="w-full bg-transparent outline-none"
+    />
   );
 }
 
@@ -572,12 +626,14 @@ function ColumnHeader({
   onRename,
   onRemove,
   canRemove,
+  readOnly = false,
 }: {
   name: string;
   accent: string;
-  onRename: (n: string) => void;
+  onRename: (n: string) => boolean;
   onRemove: () => void;
   canRemove: boolean;
+  readOnly?: boolean;
 }) {
   const ref = useRef<HTMLInputElement>(null);
   return (
@@ -589,7 +645,11 @@ function ColumnHeader({
         <input
           ref={ref}
           defaultValue={name}
-          onBlur={(e) => onRename(e.target.value.trim())}
+          readOnly={readOnly}
+          onBlur={(e) => {
+            // A refused rename (empty, or a name another column has) snaps back instead of lingering.
+            if (!onRename(e.target.value.trim())) e.target.value = name;
+          }}
           onMouseDown={(e) => e.stopPropagation()}
           className="w-full min-w-0 flex-1 bg-transparent outline-none"
         />

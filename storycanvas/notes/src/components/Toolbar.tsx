@@ -2,7 +2,7 @@
 import WorkspaceLinks from "./WorkspaceLinks";
 import ThemeToggle from "./ThemeToggle";
 
-import { ChevronRight, Eye, Settings, Palette, UserPlus, MessageSquare, Download } from "lucide-react";
+import { ChevronRight, Eye, Settings, Palette, UserPlus, MessageSquare, Download, Undo2, Redo2, Trash2, History } from "lucide-react";
 import type { SaveStatus } from "@/lib/store";
 import type { ConnectionStatus, PresenceState } from "@/lib/realtime";
 
@@ -21,6 +21,12 @@ export default function Toolbar({
   saveStatus,
   connectionStatus,
   presence = [],
+  canUndo = false,
+  canRedo = false,
+  onUndo,
+  onRedo,
+  onOpenTrash,
+  onOpenHistory,
 }: {
   crumbs: { canvasType: string; label: string }[];
   onCrumb: (index: number) => void;
@@ -33,7 +39,15 @@ export default function Toolbar({
   saveStatus: SaveStatus;
   connectionStatus?: ConnectionStatus;
   presence?: PresenceState[];
+  canUndo?: boolean;
+  canRedo?: boolean;
+  onUndo?: () => void;
+  onRedo?: () => void;
+  onOpenTrash?: () => void;
+  onOpenHistory?: () => void;
 }) {
+  const mac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
+  const mod = mac ? "⌘" : "Ctrl+";
   return (
     <div className="board-toolbar flex flex-wrap items-center gap-3 border-b border-ink-900/8 bg-parchment-50/95 px-4 py-2 backdrop-blur">
       <WorkspaceLinks guardSaves={!readOnly} />
@@ -81,7 +95,16 @@ export default function Toolbar({
           </div>
         )}
 
+        {!readOnly && onUndo && onRedo && (
+          <div className="flex items-center gap-0.5" aria-label="Undo and redo">
+            <IconButton icon={<Undo2 size={16} />} title={`Undo (${mod}Z)`} onClick={onUndo} disabled={!canUndo} />
+            <IconButton icon={<Redo2 size={16} />} title={`Redo (${mac ? "⌘⇧Z" : "Ctrl+Y"})`} onClick={onRedo} disabled={!canRedo} />
+          </div>
+        )}
+
         <div className="flex items-center gap-1">
+          {onOpenTrash && <IconButton icon={<Trash2 size={16} />} title="Recently deleted" onClick={onOpenTrash} />}
+          {onOpenHistory && <IconButton icon={<History size={16} />} title="Version history" onClick={onOpenHistory} />}
           <IconButton icon={<UserPlus size={16} />} title="Share" onClick={onOpenShare} />
           <IconButton icon={<Palette size={16} />} title="Color palette" onClick={onOpenPalette} />
           <IconButton icon={<Download size={16} />} title="Export" onClick={onExport} />
@@ -93,9 +116,15 @@ export default function Toolbar({
   );
 }
 
-function IconButton({ icon, title, onClick }: { icon: React.ReactNode; title: string; onClick: () => void }) {
+function IconButton({ icon, title, onClick, disabled = false }: { icon: React.ReactNode; title: string; onClick: () => void; disabled?: boolean }) {
   return (
-    <button onClick={onClick} title={title} className="rounded-full p-1.5 text-ink-500 hover:bg-ink-900/5 hover:text-ink-900">
+    <button
+      onClick={onClick}
+      title={title}
+      aria-label={title}
+      disabled={disabled}
+      className="rounded-full p-1.5 text-ink-500 hover:bg-ink-900/5 hover:text-ink-900 disabled:cursor-default disabled:opacity-35 disabled:hover:bg-transparent disabled:hover:text-ink-500"
+    >
       {icon}
     </button>
   );
