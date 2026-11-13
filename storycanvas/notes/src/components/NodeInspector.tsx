@@ -6,6 +6,7 @@ import type { NodeSettings, StoryNode } from "@/lib/types";
 import TypeIcon from "./TypeIcon";
 import { ShapeStyleSection } from "./ShapeCard";
 import { DrawingStyleSection } from "./DrawingCard";
+import { useEscape } from "@/lib/use-escape";
 
 const FONTS: NonNullable<NodeSettings["font"]>[] = ["default", "serif", "rounded", "handwritten", "display", "mono"];
 const SIZES: NonNullable<NodeSettings["text_size"]>[] = ["normal", "large", "huge"];
@@ -27,6 +28,7 @@ export default function NodeInspector({
   onClose: () => void;
   onDelete?: () => void;
 }) {
+  useEscape(onClose);
   const settings = node.settings ?? {};
   const colorInputRef = useRef<HTMLInputElement>(null);
   const accent = node.color || "var(--color-node-default)";

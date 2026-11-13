@@ -232,12 +232,12 @@ export function PenToolbar({ pen, onExit }: { pen: PenTool; onExit: () => void }
       {PEN_WIDTHS.map((w) => (
         <button key={w} aria-label={`Line weight ${w}`} aria-pressed={width === w && tool === "pen"} onClick={() => pen.update({ width: w, tool: "pen" })}
           className={`flex h-7 w-7 items-center justify-center rounded-full ${width === w && tool === "pen" ? "bg-ink-900/10" : "hover:bg-ink-900/5"}`}>
-          <span className="rounded-full" style={{ width: w + 2, height: w + 2, background: color }} />
+          <span className="rounded-full" style={{ width: w + 2, height: w + 2, background: color, boxShadow: "0 0 0 1.5px rgba(150,150,150,.55)" }} />
         </button>
       ))}
       <span className="mx-1 h-5 w-px bg-ink-900/10" />
       <button aria-label="Undo last stroke" title="Undo last stroke" disabled={!pen.canUndo} onClick={pen.undo} className="flex h-7 w-7 items-center justify-center rounded-full text-ink-700 hover:bg-ink-900/5 disabled:opacity-30"><Undo2 size={14} /></button>
-      <button onClick={onExit} title="Finish drawing (Esc)" className="ml-1 rounded-full bg-ink-900 px-3 py-1 text-[11.5px] font-semibold text-white">Done</button>
+      <button onClick={onExit} title="Finish drawing (Esc)" className="ml-1 rounded-full solid-chip px-3 py-1 text-[11.5px] font-semibold">Done</button>
     </div>
   );
 }

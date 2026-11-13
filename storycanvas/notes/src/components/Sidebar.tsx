@@ -2,8 +2,6 @@
 
 import {
   ArrowLeft,
-  ArrowRight,
-  FileText,
   User,
   MapPin,
   Folder,
@@ -11,7 +9,6 @@ import {
   StickyNote,
   Table2,
   Flag,
-  Users,
   Image as ImageIcon,
   PanelLeftOpen,
   Spline,
@@ -19,7 +16,8 @@ import {
 } from "lucide-react";
 import type { NodeType, ShapeKind } from "@/lib/types";
 import SidebarToolButton from "./SidebarToolButton";
-import { LayoutTemplate } from "lucide-react";
+// Every tool has its own icon shape: no two buttons may look alike at 16px.
+import { FolderCog, HeartHandshake, Plus, Type, Workflow } from "lucide-react";
 import { ChartPie, Circle, Frame, LayoutDashboard, Minus, Network, PenLine, RectangleHorizontal, Shapes, Square, SeparatorVertical } from "lucide-react";
 import ToolFlyout, { FlyoutItem } from "./ToolFlyout";
 import { BOARD_TEMPLATES, type BoardTemplateKey } from "@/lib/family-tree";
@@ -38,14 +36,14 @@ const SHAPE_CHOICES: { kind: ShapeKind; orientation?: "horizontal" | "vertical";
 // buried these behind an "Add" dropdown, so neither does this one. "Arrow"
 // isn't a node type at all: it toggles click-to-connect mode on the canvas.
 const TOOLS: { type: NodeType; label: string; icon: React.ReactNode }[] = [
-  { type: "text", label: "Text", icon: <FileText size={16} /> },
+  { type: "text", label: "Text", icon: <Type size={16} /> },
   { type: "character", label: "Character", icon: <User size={16} /> },
   { type: "location", label: "Location", icon: <MapPin size={16} /> },
   { type: "folder", label: "Folder", icon: <Folder size={16} /> },
   { type: "list", label: "List", icon: <ListIcon size={16} /> },
   { type: "table", label: "Table", icon: <Table2 size={16} /> },
   { type: "event", label: "Event", icon: <Flag size={16} /> },
-  { type: "relationship-canvas", label: "Rel. map", icon: <Users size={16} /> },
+  { type: "relationship-canvas", label: "Rel. map", icon: <HeartHandshake size={16} /> },
   { type: "compact-text", label: "Sticky", icon: <StickyNote size={16} /> },
   { type: "image", label: "Image", icon: <ImageIcon size={16} /> },
   { type: "line", label: "Line", icon: <Spline size={16} /> },
@@ -94,7 +92,7 @@ export default function Sidebar({
         <IconButton icon={<PanelLeftOpen size={18} />} title="Show sidebar" onClick={onToggleCollapsed} />
         <div className="h-px w-6 bg-ink-900/8" />
         <IconButton icon={<ArrowLeft size={16} />} title="Back" onClick={onBackToDashboard} />
-        {!readOnly && <IconButton icon={<FileText size={16} />} title="Show tools" onClick={onToggleCollapsed} />}
+        {!readOnly && <IconButton icon={<Plus size={16} />} title="Show tools" onClick={onToggleCollapsed} />}
       </div>
     );
   }
@@ -114,7 +112,7 @@ export default function Sidebar({
               <SquareButton key={t.type} icon={t.icon} title={t.label} onClick={() => onAddNode(t.type)} tour={`tool-${t.type}`} />
             ))}
             <SquareButton
-              icon={<ArrowRight size={16} />}
+              icon={<Workflow size={16} />}
               title={connectMode ? "Connecting…" : "Arrow — draw a connection"}
               onClick={onToggleConnectMode}
               active={connectMode}
@@ -143,7 +141,7 @@ export default function Sidebar({
           </>
         )}
 
-        {!readOnly && <SidebarToolButton icon={<LayoutTemplate size={16} />} title="Custom folder types" color="#8056a3" onClick={onManageTypes} />}
+        {!readOnly && <SidebarToolButton icon={<FolderCog size={16} />} title="Custom folder types" color="#8056a3" onClick={onManageTypes} />}
       </div>
     </div>
   );

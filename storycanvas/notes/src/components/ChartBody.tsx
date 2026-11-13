@@ -5,6 +5,7 @@ import { Minus, Pencil, Plus, X } from "lucide-react";
 import type { ChartData, ChartKind, StoryNode } from "@/lib/types";
 import { CHART_COLORS, STAT_MAX, arcPath, clampValue, limitsFor, normalizeChart, pieSlices, radarPoint, radarPolygon } from "@/lib/charts";
 import type { BoardActions } from "./CanvasView";
+import { useEscape } from "@/lib/use-escape";
 
 const KINDS: [ChartKind, string][] = [["radar", "Radar"], ["bar", "Bar"], ["pie", "Pie"]];
 
@@ -146,6 +147,7 @@ function Pie({ chart }: { chart: ChartData }) {
 }
 
 function ChartEditor({ chart, onChange, onDone }: { chart: ChartData; onChange: (c: Partial<ChartData>) => void; onDone: () => void }) {
+  useEscape(onDone);
   const { min, max, valueMax } = limitsFor(chart.kind);
   const setRow = (i: number, patch: Partial<{ label: string; value: number }>) => onChange({ data: chart.data.map((d, j) => (j === i ? { ...d, ...patch } : d)) });
   const step = (i: number, by: number) => setRow(i, { value: clampValue(chart.kind, chart.data[i]!.value + by) });
@@ -158,7 +160,7 @@ function ChartEditor({ chart, onChange, onDone }: { chart: ChartData; onChange: 
             {label}
           </button>
         ))}
-        <button onClick={onDone} className="ml-auto rounded-full bg-ink-900 px-3 py-1 text-[11.5px] font-semibold text-white">Done</button>
+        <button onClick={onDone} className="ml-auto rounded-full solid-chip px-3 py-1 text-[11.5px] font-semibold">Done</button>
       </div>
       <div className="flex flex-col gap-1">
         {chart.data.map((d, i) => (

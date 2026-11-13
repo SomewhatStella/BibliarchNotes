@@ -194,7 +194,7 @@ export default function Dashboard({ userId, username }: { userId: string; userna
                 onClick={() => setConfirmDelete(s)}
                 title={s.user_id === userId ? "Delete story" : "Leave this shared story"}
                 aria-label={s.user_id === userId ? `Delete ${s.title}` : `Leave ${s.title}`}
-                className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-white/85 px-2 py-1 text-[11px] text-ink-500 shadow-card hover:bg-bibliarch-rose/15 hover:text-bibliarch-rose"
+                className="story-card-action absolute right-3 top-3 flex items-center gap-1 rounded-full px-2.5 py-1 text-[11.5px] font-semibold shadow-card"
               >
                 {s.user_id === userId ? <Trash2 size={12} /> : <LeaveIcon size={12} />}
                 {s.user_id === userId ? "Delete" : "Leave"}

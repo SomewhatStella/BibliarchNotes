@@ -2,7 +2,7 @@
 import WorkspaceLinks from "./WorkspaceLinks";
 import ThemeToggle from "./ThemeToggle";
 
-import { ChevronRight, Eye, Settings, Palette, UserPlus, MessageSquare, Download, Undo2, Redo2, Trash2, History, CircleHelp } from "lucide-react";
+import { ChevronRight, Eye, Settings, Palette, UserPlus, MessageSquare, Download, Undo2, Redo2, ArchiveRestore, History, CircleHelp } from "lucide-react";
 import type { SaveStatus } from "@/lib/store";
 import type { ConnectionStatus, PresenceState } from "@/lib/realtime";
 
@@ -106,7 +106,7 @@ export default function Toolbar({
         )}
 
         <div className="flex items-center gap-1">
-          {onOpenTrash && <IconButton icon={<Trash2 size={16} />} title="Recently deleted" onClick={onOpenTrash} />}
+          {onOpenTrash && <IconButton icon={<ArchiveRestore size={16} />} title="Recently deleted" onClick={onOpenTrash} />}
           {onOpenHistory && <IconButton icon={<History size={16} />} title="Version history" onClick={onOpenHistory} />}
           <IconButton icon={<UserPlus size={16} />} title="Share" onClick={onOpenShare} tour="share" />
           <IconButton icon={<Palette size={16} />} title="Color palette" onClick={onOpenPalette} tour="palette" />

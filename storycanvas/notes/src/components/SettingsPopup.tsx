@@ -1,6 +1,7 @@
 "use client";
 
 import { X } from "lucide-react";
+import { useEscape } from "@/lib/use-escape";
 
 const GRID_SIZES = [10, 20, 40];
 
@@ -17,6 +18,7 @@ export default function SettingsPopup({
   setSnap: (b: boolean) => void;
   onClose: () => void;
 }) {
+  useEscape(onClose);
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-ink-900/15" onClick={onClose}>
       <div onClick={(e) => e.stopPropagation()} className="pop-in emboss w-80 rounded-2xl p-5">

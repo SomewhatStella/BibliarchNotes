@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { X, Search, UserPlus, Eye, Edit3, Trash2, LogOut, Link as LinkIcon, Copy, Check, Clock, Crown } from "lucide-react";
 import * as collab from "@/lib/collaboration";
 import type { Collaborator, ShareToken } from "@/lib/collaboration";
+import { useEscape } from "@/lib/use-escape";
 
 export default function ShareDialog({
   storyId,
@@ -20,6 +21,7 @@ export default function ShareDialog({
   onCollaboratorsChanged?: () => void;
   onLeave?: () => void;
 }) {
+  useEscape(onClose);
   const [collaborators, setCollaborators] = useState<Collaborator[] | null>(null);
   const [tokens, setTokens] = useState<ShareToken[] | null>(null);
   const [query, setQuery] = useState("");

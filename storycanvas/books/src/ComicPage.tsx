@@ -1,5 +1,6 @@
 'use client';
-import {useEffect, useRef, useState, type CSSProperties} from 'react';
+import {useEffect, useLayoutEffect, useRef, useState, type CSSProperties} from 'react';
+import {createPortal} from 'react-dom';
 import type {ImageAsset, Scene} from './model';
 import {decalSource} from './design';
 import {artworkOverflowCss} from './artwork-overflow';
@@ -48,10 +49,32 @@ export default function ComicPage({scene, assets = [], width, height, widthMm, h
   const allBubbles = panels.flatMap((p, i) => (p.bubbles || []).map(b => ({b, i})));
   const current = selected?.bubble ? allBubbles.find(x => x.b.id === selected.bubble) : undefined;
 
+  // The toolbar floats just above the page (portaled out of the zoomed page), so it never covers
+  // the panels or a bubble you just added. When the page top scrolls away it stays at the top of
+  // the screen instead, and it never runs off the bottom.
+  const bar = useRef<HTMLDivElement>(null);
+  const [barStyle, setBarStyle] = useState<CSSProperties>({position: 'fixed', visibility: 'hidden'});
+  useLayoutEffect(() => {
+    if (!selected) return;
+    const place = () => {
+      const page = root.current?.getBoundingClientRect(), h = bar.current?.offsetHeight ?? 0;
+      if (!page) return;
+      // Stay inside the scrolling editor area: never over the app's own top bar.
+      let scroller: HTMLElement | null = root.current?.parentElement ?? null;
+      while (scroller && !/(auto|scroll)/.test(getComputedStyle(scroller).overflowY)) scroller = scroller.parentElement;
+      const area = scroller?.getBoundingClientRect() ?? {top: 0, bottom: window.innerHeight};
+      const top = Math.min(Math.max(page.top - h - 12, area.top + 8), area.bottom - h - 8);
+      setBarStyle({position: 'fixed', top, left: page.left + page.width / 2, transform: 'translateX(-50%)', margin: 0, zIndex: 60, maxWidth: Math.min(page.width + 120, window.innerWidth - 24)});
+    };
+    place();
+    window.addEventListener('scroll', place, true); window.addEventListener('resize', place);
+    return () => { window.removeEventListener('scroll', place, true); window.removeEventListener('resize', place); };
+  }, [selected, current?.b.id]);
+
   // Clicking anywhere else (except this page's toolbar) ends the selection.
   useEffect(() => {
     if (!selected) return;
-    const away = (e: PointerEvent) => { const t = e.target as HTMLElement; if (!root.current?.contains(t)) setSelected(null); };
+    const away = (e: PointerEvent) => { const t = e.target as HTMLElement; if (!root.current?.contains(t) && !bar.current?.contains(t)) setSelected(null); };
     const key = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setSelected(null);
       if ((e.key === 'Delete' || e.key === 'Backspace') && selected.bubble && !(e.target as HTMLElement)?.closest?.('input,textarea,select,[contenteditable=true]')) {
@@ -151,7 +174,7 @@ export default function ComicPage({scene, assets = [], width, height, widthMm, h
     })}
     {[false, true].map(ghost => <div key={String(ghost)} aria-hidden={ghost || undefined} className={ghost ? 'artwork-overflow-ghost decal-overflow-ghost' : 'artwork-clip'} style={{zIndex: 5}}>{(scene.decals || []).map(d => { try { return <img key={d.id} data-decal-id={ghost ? undefined : d.id} data-decal-proxy={ghost ? d.id : undefined} draggable={false} src={decalSource(d.src, d.color)} alt="" className="decal" style={{position: 'absolute', left: `${d.x}%`, top: `${d.y}%`, width: `${d.width}%`, height: 'auto', maxWidth: 'none', transform: `rotate(${d.rotation}deg)`, opacity: d.opacity, pointerEvents: 'auto'}}/>; } catch { return null; } })}</div>)}
 
-    {selected && <div className="image-mini-toolbar comic-toolbar comic-editor-only" role="toolbar" aria-label={current ? BUBBLE_LABEL[current.b.kind] : `Panel ${selected.panel + 1}`} onPointerDown={e => e.stopPropagation()}>
+    {selected && typeof document !== 'undefined' && createPortal(<div ref={bar} style={barStyle} className="image-mini-toolbar comic-toolbar comic-floating comic-editor-only" role="toolbar" aria-label={current ? BUBBLE_LABEL[current.b.kind] : `Panel ${selected.panel + 1}`} onPointerDown={e => e.stopPropagation()}>
       {current ? <>
         <strong>{BUBBLE_LABEL[current.b.kind]}</strong>
         <select aria-label="Kind of bubble" value={current.b.kind} onChange={e => save(patchBubble(current.i, current.b.id, {kind: e.target.value as ComicBubbleKind}))}>
@@ -182,6 +205,6 @@ export default function ComicPage({scene, assets = [], width, height, widthMm, h
         <button type="button" onClick={onOpenLayout}>Page layout…</button>
         {selArt && <small className="comic-hint">Drag the picture to move it inside the panel.</small>}
       </>}
-    </div>}
+    </div>, document.body)}
   </section>;
 }

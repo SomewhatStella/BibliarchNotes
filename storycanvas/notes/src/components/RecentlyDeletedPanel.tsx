@@ -5,6 +5,7 @@ import { RotateCcw, Trash2, X } from "lucide-react";
 import { listDeletedNodes, DELETED_KEEP_DAYS, type DeletedRecord } from "@/lib/safety-net";
 import type { CanvasRow } from "@/lib/types";
 import TypeIcon from "./TypeIcon";
+import { useEscape } from "@/lib/use-escape";
 
 /** Human name for a board key: "Main board", or the card that opens it. */
 export function boardName(canvasType: string, canvases: Record<string, CanvasRow>): string {
@@ -40,6 +41,7 @@ export default function RecentlyDeletedPanel({
   onRestore: (rec: DeletedRecord) => Promise<boolean>;
   onClose: () => void;
 }) {
+  useEscape(onClose);
   const [items, setItems] = useState<DeletedRecord[] | null | "unavailable">(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);

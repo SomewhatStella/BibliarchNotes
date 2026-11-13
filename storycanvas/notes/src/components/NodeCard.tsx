@@ -319,7 +319,7 @@ function CardNode({
       </div>
 
       {lockedBy && (
-        <div className="pop-in absolute -top-2.5 left-2 z-10 flex items-center gap-1 rounded-full bg-ink-900 px-2 py-0.5 text-[10px] text-white shadow-card">
+        <div className="pop-in absolute -top-2.5 left-2 z-10 flex items-center gap-1 rounded-full solid-chip px-2 py-0.5 text-[10px] shadow-card">
           <Lock size={9} />
           {lockedBy.username} is editing
         </div>

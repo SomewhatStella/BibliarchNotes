@@ -7,6 +7,7 @@ import type { RelationshipConnection, StoryNode } from "@/lib/types";
 import { RELATIONSHIP_COLORS, RELATIONSHIP_TYPES } from "@/lib/types";
 import { getImageUrl } from "@/lib/storage";
 import { mapLabel, useSharedRelationships } from "@/lib/use-shared-relationships";
+import { useEscape } from "@/lib/use-escape";
 
 const STRENGTH_WIDTH = { 1: 1, 2: 2, 3: 3.5 } as const;
 const STRENGTH_LABEL = { 1: "weak", 2: "medium", 3: "strong" } as const;
@@ -36,6 +37,7 @@ export default function RelationshipEditor({
   readOnly?: boolean;
 }) {
   const [adding, setAdding] = useState<RelationshipConnection | null | undefined>(undefined);
+  useEscape(() => setAdding(undefined), adding !== undefined);
   const [formA, setFormA] = useState("");
   const [formB, setFormB] = useState("");
   const [formType, setFormType] = useState<(typeof RELATIONSHIP_TYPES)[number]>("friends");

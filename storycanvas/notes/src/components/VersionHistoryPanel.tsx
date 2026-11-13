@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { History, RotateCcw, X } from "lucide-react";
 import { listSnapshots, type SnapshotRecord } from "@/lib/safety-net";
+import { useEscape } from "@/lib/use-escape";
 
 // Earlier versions of the board you're on: one saved at most every 10
 // minutes while anyone edits it, newest 20 kept. Restoring is one undoable
@@ -22,6 +23,7 @@ export default function VersionHistoryPanel({
   onRestore: (snap: SnapshotRecord) => Promise<void>;
   onClose: () => void;
 }) {
+  useEscape(onClose);
   const [items, setItems] = useState<SnapshotRecord[] | null | "unavailable">(null);
   const [confirming, setConfirming] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);

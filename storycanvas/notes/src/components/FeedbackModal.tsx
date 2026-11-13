@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { X, Bug, Lightbulb, MessageCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { useEscape } from "@/lib/use-escape";
 
 /*
  * Send feedback, tagged as a bug, a suggestion or general feedback: the same dialog as
@@ -17,6 +18,7 @@ const TYPES = [
 type Kind = (typeof TYPES)[number]["value"];
 
 export default function FeedbackModal({ onClose }: { onClose: () => void }) {
+  useEscape(onClose);
   const [type, setType] = useState<Kind>("bug");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");

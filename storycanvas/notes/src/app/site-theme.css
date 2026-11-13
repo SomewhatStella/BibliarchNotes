@@ -75,3 +75,14 @@ html[data-ui-theme='dark'] .notes-overview-shell main .bg-white\/80{background:v
 
 /* Phones: identical end buttons in every app, so the page links stay centred. */
 @media(max-width:700px){.site-navigation .ui-theme-toggle{width:44px;min-width:44px;padding:0;gap:0;justify-content:center}.site-navigation :is(.feedback-button,.site-feedback-button){width:40px;min-width:40px}}
+
+/* Story card Delete/Leave: a real pill in both themes (it was white-on-white text in dark mode). */
+.story-card-action { background: #ffffffe6; color: #5b6170; border: 1px solid #1d243314; }
+.story-card-action:hover { background: #fbe9ee; color: #b4475f; border-color: #b4475f40; }
+html[data-ui-theme='dark'] .story-card-action { background: #2a3242; color: #d9dde6; border-color: #ffffff1f; }
+html[data-ui-theme='dark'] .story-card-action:hover { background: #4a2430; color: #ffb3c4; border-color: #ffb3c455; }
+
+/* Solid chips (Done buttons, the "Moved…/Added…" notice, "X is editing" badge): dark on light,
+   light on dark. Plain bg-ink-900 + text-white turned into white text on cream in dark mode. */
+.solid-chip { background: #1d2433; color: #fff; }
+html[data-ui-theme='dark'] .solid-chip { background: #e9edf4; color: #141a24; }

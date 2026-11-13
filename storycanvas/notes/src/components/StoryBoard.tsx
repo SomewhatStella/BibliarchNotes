@@ -418,9 +418,19 @@ export default function StoryBoard({ storyId, storyTitle, userId }: { storyId: s
     for (let y = top; y <= bottom; y += 32) {
       for (let x = left; x <= right; x += 32) if (free(x, y)) return {x, y};
     }
-    // A packed viewport may overlap, but never silently add an invisible card.
-    const offset = (visible.length % 5) * 16;
-    return {x: Math.min(right, center.x + offset), y: Math.min(bottom, center.y + offset)};
+    // No room in view: put it just below everything on the board (never on top of another card)
+    // and scroll the view there, so the new card is still right in front of you.
+    const all = (currentCanvas?.nodes ?? []).filter(n => !n.parentId && n.type !== "line" && !(n.type === "shape" && n.shape?.kind === "frame"));
+    const spot = {x: Math.max(40, Math.min(...all.map(n => n.x))), y: Math.max(...all.map(n => n.y + n.height)) + 60};
+    scrollIntoView(spot);
+    return spot;
+  }
+  function scrollIntoView(spot: {x: number; y: number}) {
+    const ground = document.querySelector<HTMLElement>(".canvas-ground");
+    const vp = viewport.current;
+    if (!ground) return;
+    const zoom = ground.clientWidth / Math.max(1, vp.width);
+    requestAnimationFrame(() => ground.scrollTo({left: Math.max(0, (spot.x - 40) * zoom), top: Math.max(0, (spot.y - 40) * zoom), behavior: "smooth"}));
   }
   function addNode(type: NodeType) {
     if (!currentCanvas || readOnly) return;
@@ -481,13 +491,7 @@ export default function StoryBoard({ storyId, storyTitle, userId }: { storyId: s
     const stepId = useCanvasStore.getState().undoTopId;
     store.endGesture();
     broadcastCurrent(ct);
-    if (scrollToIt) {
-      const ground = document.querySelector<HTMLElement>(".canvas-ground");
-      if (ground) {
-        const zoom = ground.clientWidth / Math.max(1, vp.width);
-        requestAnimationFrame(() => ground.scrollTo({ left: Math.max(0, (tx - 40) * zoom), top: Math.max(0, (ty - 40) * zoom), behavior: "smooth" }));
-      }
-    }
+    if (scrollToIt) scrollIntoView({ x: tx, y: ty });
     setConnectMode(false);
     setPenMode(false);
     setInspectorAnchor(null);
@@ -670,7 +674,7 @@ export default function StoryBoard({ storyId, storyTitle, userId }: { storyId: s
           />
           </div>
           {dropNotice && (
-            <div role="status" className="pop-in absolute bottom-12 left-1/2 z-30 flex -translate-x-1/2 items-center gap-3 rounded-full bg-ink-900 px-4 py-2 text-[12.5px] text-white shadow-card">
+            <div role="status" className="pop-in absolute bottom-12 left-1/2 z-30 flex -translate-x-1/2 items-center gap-3 rounded-full solid-chip px-4 py-2 text-[12.5px] shadow-card">
               {dropNotice.text}
               {dropNotice.stepId !== null && store.undoTopId === dropNotice.stepId && (
                 <button onClick={() => runHistory("undo")} className="rounded-full bg-white/20 px-2.5 py-0.5 text-[12px] font-semibold">Undo</button>
