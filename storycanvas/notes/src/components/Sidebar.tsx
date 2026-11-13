@@ -15,6 +15,7 @@ import {
   Image as ImageIcon,
   PanelLeftOpen,
   Spline,
+  Link2,
 } from "lucide-react";
 import type { NodeType } from "@/lib/types";
 import SidebarToolButton from "./SidebarToolButton";
@@ -53,6 +54,7 @@ export default function Sidebar({
   readOnly = false,
   collapsed,
   onToggleCollapsed,
+  onLinkExisting,
 }: {
   onManageTypes: () => void;
   onAddNode: (type: NodeType) => void;
@@ -62,6 +64,8 @@ export default function Sidebar({
   readOnly?: boolean;
   collapsed: boolean;
   onToggleCollapsed: () => void;
+  /** Opens the "link an existing character/place" picker. */
+  onLinkExisting?: () => void;
 }) {
   if (collapsed) {
     return (
@@ -82,18 +86,22 @@ export default function Sidebar({
           not two nested ones competing for the mouse wheel depending on
           exactly where the cursor sits — that was swallowing wheel input
           that was meant to pan the canvas. */}
-      <div className="scrollbar-thin mt-3 flex min-h-0 w-full flex-1 flex-col items-center gap-1 overflow-y-auto overflow-x-hidden">
+      <div data-tour="sidebar-tools" className="scrollbar-thin mt-3 flex min-h-0 w-full flex-1 flex-col items-center gap-1 overflow-y-auto overflow-x-hidden">
         {!readOnly && (
           <>
             {TOOLS.map((t) => (
-              <SquareButton key={t.type} icon={t.icon} title={t.label} onClick={() => onAddNode(t.type)} />
+              <SquareButton key={t.type} icon={t.icon} title={t.label} onClick={() => onAddNode(t.type)} tour={`tool-${t.type}`} />
             ))}
             <SquareButton
               icon={<ArrowRight size={16} />}
               title={connectMode ? "Connecting…" : "Arrow — draw a connection"}
               onClick={onToggleConnectMode}
               active={connectMode}
+              tour="connect-tool"
             />
+            {onLinkExisting && (
+              <SquareButton icon={<Link2 size={16} />} title="Link an existing character or place" onClick={onLinkExisting} tour="link-existing" />
+            )}
           </>
         )}
 

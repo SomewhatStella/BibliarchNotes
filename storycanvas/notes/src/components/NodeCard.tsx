@@ -20,6 +20,9 @@ import {
   Upload,
   CornerRightDown,
   SlidersHorizontal,
+  Pencil,
+  Link2,
+  Unlink2,
 } from "lucide-react";
 import type { NodeType, StoryNode } from "@/lib/types";
 import type { BoardActions, LockedNodeInfo } from "./CanvasView";
@@ -27,6 +30,7 @@ import RelationshipEditor from "./RelationshipEditor";
 import TypeIcon from "./TypeIcon";
 import CustomTypeIcon from "./CustomTypeIcon";
 import { getImageUrl } from "@/lib/storage";
+import { useCharacterLink, type LinkInfo } from "@/lib/use-character-link";
 
 const FOLDER_ICONS = { folder: Folder, book: BookOpen, archive: Archive, box: Box } as const;
 
@@ -56,7 +60,26 @@ const TYPE_ADD_CHOICES: { type: NodeType; label: string }[] = [
 const isTouch = () => typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
 // Whether the card was already selected when this finger came down (pressing selects it).
 let pressedSelected = false;
-const notePress = (e: { currentTarget: Element }) => { pressedSelected = !!e.currentTarget.closest("[data-selected]"); };
+let pressAt = { x: 0, y: 0 };
+const notePress = (e: { currentTarget: Element; clientX: number; clientY: number }) => {
+  pressedSelected = !!e.currentTarget.closest("[data-selected]");
+  pressAt = { x: e.clientX, y: e.clientY };
+};
+// On cards that open, double-click means "open" (it used to start renaming the name you
+// double-clicked, which is why getting into a profile felt hard). Renaming moved to a slow
+// second click on a selected card's name; it waits out the double-click window first.
+let pendingEdit: ReturnType<typeof setTimeout> | null = null;
+function cancelPendingEdit() {
+  if (pendingEdit) clearTimeout(pendingEdit);
+  pendingEdit = null;
+}
+function schedulePendingEdit(fn: () => void) {
+  cancelPendingEdit();
+  pendingEdit = setTimeout(() => {
+    pendingEdit = null;
+    fn();
+  }, 320);
+}
 
 export default function NodeCard({
   node,
@@ -94,7 +117,15 @@ export default function NodeCard({
   // palette system writes — see lib/color-palette.ts).
   const accent = node.color || "var(--color-node-default)";
   const type = node.type ?? "text";
-  const isOpenable = type === "folder" || type === "location" || type === "character" || (type === "event" && !!node.linkedCanvasId);
+  // A linked card shows (and opens) its original; a link whose original was deleted can't open.
+  const link = useCharacterLink(node);
+  const shown = link?.shown ?? node;
+  const missing = !!link && !link.original;
+  const isOpenable = !missing && (type === "folder" || type === "location" || type === "character" || (type === "event" && !!node.linkedCanvasId));
+  const open = () => {
+    cancelPendingEdit();
+    actions.openNode(link?.original ?? node);
+  };
   const pinnedLocked = node.settings?.locked;
   // Three distinct reasons editing can't start here: this card is pinned
   // locked by its owner, someone else is editing it right now (field lock
@@ -103,7 +134,7 @@ export default function NodeCard({
 
   function startEdit(field: typeof editing) {
     if (editBlocked || !field) return;
-    setDraft((node[field as keyof StoryNode] as string) ?? "");
+    setDraft((shown[field as keyof StoryNode] as string) ?? "");
     setEditing(field);
     actions.lockNode(node.id, field);
   }
@@ -113,7 +144,7 @@ export default function NodeCard({
     actions.unlockNode(node.id);
   }
 
-  const edit = { editing, draft, setDraft, startEdit, commitEdit };
+  const edit = { editing, draft, setDraft, startEdit, commitEdit, onOpen: isOpenable ? open : undefined };
   const minSize = MIN_RENDER_SIZE[type];
   const renderWidth = minSize ? Math.max(node.width, minSize.w) : node.width;
   const renderHeight = minSize ? Math.max(node.height, minSize.h) : node.height;
@@ -133,7 +164,15 @@ export default function NodeCard({
         e.stopPropagation();
         onSelect();
       }}
-      className={`${type === "table" ? "table-node" : "rounded-2xl emboss"} absolute flex flex-col transition-shadow ${
+      onDoubleClick={(e) => {
+        // Double-click anywhere on a folder/character/location card opens it.
+        if (!isOpenable || editing) return;
+        if ((e.target as HTMLElement).closest('input, textarea, select, button, [contenteditable="true"]')) return;
+        e.stopPropagation();
+        open();
+      }}
+      title={isOpenable && selected ? "Double-click to open" : undefined}
+      className={`${type === "table" ? "table-node" : "rounded-2xl emboss"} absolute flex flex-col transition-shadow ${missing ? "border-dashed opacity-80" : ""} ${
         selected ? (type === "table" ? "outline outline-2 outline-gold-500" : "shadow-card-hover ring-2 ring-gold-500") : ""
       }`}
       style={{
@@ -159,6 +198,20 @@ export default function NodeCard({
         {selected && !readOnly && (
           <div className="absolute right-0 bottom-full mb-1 z-10 flex items-center gap-1" data-node-controls>
             {pinnedLocked && <Lock size={11} className="text-ink-500" />}
+            {isOpenable && !editBlocked && (
+              <button
+                title="Rename"
+                aria-label="Rename"
+                onMouseDown={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  startEdit(type === "event" ? "title" : "text");
+                }}
+                className="rounded-full bg-editor-raised/80 p-1 text-ink-500 hover:bg-bibliarch-blue/15 hover:text-bibliarch-blue"
+              >
+                <Pencil size={12} />
+              </button>
+            )}
             {/* The explicit, deliberate trigger for the style panel — it
                 used to open the instant ANY card was selected (including
                 mid-drag), popping up far from wherever you'd clicked.
@@ -192,7 +245,7 @@ export default function NodeCard({
         <div className="flex min-h-0 flex-1">
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           {type === "character" || type === "location" ? (
-            <NameRow node={node} typeColor={accent} {...edit} />
+            <NameRow node={shown} typeColor={accent} link={link} {...edit} />
           ) : type === "folder" ? (
             <FolderBody node={node} {...edit} />
           ) : type === "list" ? (
@@ -202,7 +255,7 @@ export default function NodeCard({
           ) : type === "relationship-canvas" ? (
             <>
               <TitleRow icon={<Users size={13} />} node={node} {...edit} />
-              <RelationshipEditor node={node} allCharacters={allCharacters} onChange={(patch) => actions.editNode(node.id, patch)} />
+              <RelationshipEditor node={node} allCharacters={allCharacters} onChange={(patch) => actions.editNode(node.id, patch)} readOnly={readOnly} />
             </>
           ) : type === "image" ? (
             <ImageBody node={node} actions={actions} />
@@ -216,16 +269,20 @@ export default function NodeCard({
         </div>
 
         {isOpenable && (
+          // A real button shape (it used to read as plain blue text); bigger on touch screens.
           <button
-            aria-label={`Open ${node.text || node.title || "Untitled"}`}
+            aria-label={`Open ${shown.text || shown.title || "Untitled"}`}
+            title="Open (or double-click the card)"
+            data-tour="open-card"
+            data-open-card
             onMouseDown={(e) => e.stopPropagation()}
             onClick={(e) => {
               e.stopPropagation();
-              actions.openNode(node);
+              open();
             }}
-            className="mr-2.5 flex flex-none self-center items-center justify-center gap-1 rounded-lg px-2 py-1 text-[12px] font-semibold text-bibliarch-blue hover:bg-ink-900/5"
+            className="mr-2.5 flex flex-none self-center items-center justify-center gap-0.5 rounded-full border border-bibliarch-blue/25 bg-bibliarch-blue/10 py-1 pl-2.5 pr-1.5 text-[12px] font-semibold text-bibliarch-blue hover:border-transparent hover:bg-bibliarch-blue hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-bibliarch-blue"
           >
-            Open <ChevronRight size={16} />
+            Open <ChevronRight size={15} />
           </button>
         )}
         </div>
@@ -258,6 +315,8 @@ type EditProps = {
   setDraft: (s: string) => void;
   startEdit: (f: "text" | "content" | "title" | "summary" | "durationText") => void;
   commitEdit: () => void;
+  /** Set on cards that open: double-click opens instead of renaming. */
+  onOpen?: () => void;
 };
 
 function EditableField({
@@ -268,6 +327,7 @@ function EditableField({
   setDraft,
   startEdit,
   commitEdit,
+  onOpen,
   as = "input",
   className = "",
   placeholder = "",
@@ -299,15 +359,23 @@ function EditableField({
   return (
     <Tag
       onDoubleClick={(e) => {
+        if (onOpen) return; // the card itself opens on double-click
         e.stopPropagation();
         startEdit(field);
       }}
       onPointerDown={notePress}
       onClick={(e) => {
+        if (!pressedSelected) return;
         // Phones have no reliable double-click: the first tap selects the card, the next one edits.
-        if (!isTouch() || !pressedSelected) return;
+        if (isTouch()) {
+          e.stopPropagation();
+          startEdit(field);
+          return;
+        }
+        // A drag that ends on the name is not a click to rename.
+        if (!onOpen || Math.hypot(e.clientX - pressAt.x, e.clientY - pressAt.y) > 4) return;
         e.stopPropagation();
-        startEdit(field);
+        schedulePendingEdit(() => startEdit(field));
       }}
       className={`${className} ${value ? "" : "text-ink-500/50"}`}
     >
@@ -368,13 +436,17 @@ function EventBody({ node, ...edit }: { node: StoryNode } & EditProps) {
   );
 }
 
-function NameRow({ node, typeColor, ...edit }: { node: StoryNode; typeColor: string } & EditProps) {
+function NameRow({ node, typeColor, link, ...edit }: { node: StoryNode; typeColor: string; link?: LinkInfo | null } & EditProps) {
   const shape = node.settings?.picture_shape === "square" ? "rounded-md" : node.settings?.picture_shape === "rounded" ? "rounded-xl" : "rounded-full";
   const portrait = getImageUrl(node.profileImageUrl);
+  const missing = !!link && !link.original;
+  const kind = node.type === "location" ? "place" : "character";
   return (
     <div className="flex h-full items-center gap-2.5 px-2.5">
-      <div className={`flex h-10 w-10 flex-none items-center justify-center ${shape} text-[11px] font-semibold text-white`} style={{ background: typeColor }}>
-        {portrait ? (
+      <div className={`flex h-10 w-10 flex-none items-center justify-center ${shape} text-[11px] font-semibold text-white`} style={{ background: missing ? "#8b8b8b" : typeColor }}>
+        {missing ? (
+          <Unlink2 size={16} />
+        ) : portrait ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={portrait} alt="" className={`h-full w-full object-cover ${shape}`} />
         ) : node.type === "location" ? (
@@ -383,7 +455,26 @@ function NameRow({ node, typeColor, ...edit }: { node: StoryNode; typeColor: str
           (node.text || "?").slice(0, 2).toUpperCase()
         )}
       </div>
-      <EditableField node={node} field="text" {...edit} className="truncate font-display text-[13.5px] font-semibold text-ink-900" placeholder="Untitled" />
+      <div className="flex min-w-0 flex-1 flex-col">
+        {missing ? (
+          <span className="truncate font-display text-[13.5px] font-semibold text-ink-500 line-through">{node.text || "Untitled"}</span>
+        ) : (
+          <EditableField node={node} field="text" {...edit} className="truncate font-display text-[13.5px] font-semibold text-ink-900" placeholder="Untitled" />
+        )}
+        {link && (
+          <span
+            className={`flex min-w-0 items-center gap-1 text-[10.5px] ${missing ? "text-bibliarch-rose" : "text-ink-500"}`}
+            title={missing ? `The original ${kind} was deleted. Delete this link, or undo the delete.` : `A link to ${node.text || "this " + kind} on ${link.board}. Edits show everywhere.`}
+          >
+            <Link2 size={10} className="flex-none" />
+            <span className="truncate">{missing ? `Missing ${kind}: original deleted` : `from ${link.board}`}</span>
+          </span>
+        )}
+        {/* A taller link card has room for the original's summary too. */}
+        {link?.original && node.content?.trim() && node.height >= 96 && (
+          <span className="mt-0.5 line-clamp-2 text-[11.5px] leading-snug text-ink-700">{node.content}</span>
+        )}
+      </div>
     </div>
   );
 }
@@ -667,17 +758,21 @@ const LIST_OPENABLE = new Set<NodeType>(["folder", "location", "character"]);
 // A member reads as its own small node — the type's real icon in a colored
 // badge, not a generic bullet — and openable types (folder/location/
 // character) actually open on click, the same as their full-size cousins.
-function ListMemberRow({ child, actions }: { child: StoryNode; actions: BoardActions }) {
+function ListMemberRow({ child: member, actions }: { child: StoryNode; actions: BoardActions }) {
+  // A linked card in a list shows and opens its original, like it does on the board.
+  const link = useCharacterLink(member);
+  const child = link?.shown ?? member;
   const [renaming, setRenaming] = useState(false);
   const [val, setVal] = useState(child.text);
   const portrait = getImageUrl(child.profileImageUrl);
   const accent = child.color || "var(--color-node-default)";
-  const openable = LIST_OPENABLE.has(child.type ?? "text");
+  const openable = LIST_OPENABLE.has(child.type ?? "text") && !(link && !link.original);
 
   return (
     <div
       className={`group flex flex-none items-center gap-2.5 rounded-xl border border-ink-900/8 bg-editor-raised px-3 py-3 shadow-card ${openable ? "cursor-pointer hover:border-ink-900/20 hover:shadow-card-hover" : ""}`}
-      onClick={() => openable && actions.openNode(child)}
+      onClick={() => openable && actions.openNode(link?.original ?? member)}
+      title={link ? (link.original ? `Linked from ${link.board}` : "The original was deleted") : undefined}
     >
       <div className="flex h-9 w-9 flex-none items-center justify-center overflow-hidden rounded-lg text-white" style={{ background: accent }}>
         {child.type === "character" && portrait ? (

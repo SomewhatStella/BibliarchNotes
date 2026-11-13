@@ -10,7 +10,7 @@ import { getStoryAccess, type StoryRole } from "@/lib/collaboration";
 import { useRealtimeCanvas, useStoryCoordination, usePresence, type LockedNode } from "@/lib/realtime";
 import { exportStoryAsText, downloadText } from "@/lib/export";
 import { migrateLegacyImages } from "@/lib/migrate-images";
-import { applyPaletteToDOM, DEFAULT_PALETTE, normalizePalette, type ColorPalette } from "@/lib/color-palette";
+import { applyPaletteToDOM, isDefaultPalette, normalizePalette, type ColorPalette } from "@/lib/color-palette";
 import type { ConnectionType, NodeType, StoryConnection, StoryNode } from "@/lib/types";
 import CanvasView, { type CanvasViewport, type BoardActions } from "./CanvasView";
 import Toolbar from "./Toolbar";
@@ -23,6 +23,10 @@ import PaletteEditor from "./PaletteEditor";
 import CustomTypesDialog from "./CustomTypesDialog";
 import { instantiateTemplate, snapshotInteriors, type CustomTemplate } from "@/lib/custom-templates";
 import { boardTemplateKey, instantiateBoardTemplate } from "@/lib/board-templates";
+import { findNode, linkFields, linkedEdits } from "@/lib/character-links";
+import { persistRegistryMigration } from "@/lib/use-shared-relationships";
+import LinkCharacterDialog from "./LinkCharacterDialog";
+import TutorialTour, { tourSeen } from "./TutorialTour";
 
 type Crumb = { canvasType: string; label: string };
 
@@ -46,6 +50,8 @@ export default function StoryBoard({ storyId, storyTitle, userId }: { storyId: s
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [typesOpen, setTypesOpen] = useState(false);
+  const [linkOpen, setLinkOpen] = useState(false);
+  const [tourOpen, setTourOpen] = useState(false);
   // "Moved X into Y" with Undo, after dropping a card onto a folder or character.
   const [dropNotice, setDropNotice] = useState<{ text: string; undo: () => void } | null>(null);
   useEffect(() => {
@@ -123,11 +129,24 @@ export default function StoryBoard({ storyId, storyTitle, userId }: { storyId: s
   const readOnly = access?.role === "viewer";
   const isOwner = access?.isOwner ?? false;
 
+  // Fold old per-map relationship ties into the story-wide registry once the story is loaded
+  // (editors only: a viewer can't save). Re-runs after a reconnect reload; a no-op when done.
+  useEffect(() => {
+    if (access && access.role !== "viewer" && !store.loading) persistRegistryMigration();
+  }, [access, store.loading]);
+
+  // First visit: the guided tour opens by itself, once. Not for automated test browsers.
+  useEffect(() => {
+    if (store.loading || tourSeen() || navigator.webdriver) return;
+    const t = setTimeout(() => setTourOpen(true), 700);
+    return () => clearTimeout(t);
+  }, [store.loading]);
+
   // The story's palette lives on the main canvas row, shared with every
   // collaborator. Applied as CSS custom properties — see lib/color-palette.ts.
   const rawPalette = store.canvases["main"]?.palette;
   const palette = useMemo(() => normalizePalette(rawPalette), [rawPalette]);
-  const defaultPalette = palette.id === "default" && JSON.stringify(palette.colors) === JSON.stringify(DEFAULT_PALETTE.colors);
+  const defaultPalette = isDefaultPalette(palette);
   useEffect(() => {
     applyPaletteToDOM(palette);
     // Normalization is display-only. Viewing or changing Appearance must
@@ -173,6 +192,9 @@ export default function StoryBoard({ storyId, storyTitle, userId }: { storyId: s
   const { presenceState } = usePresence(storyId, currentCanvasType, username);
 
   function broadcastCurrent(canvasType: string) {
+    // The channel is for the board on screen; sending another board's cards (the palette's
+    // "main", a linked original elsewhere) would make collaborators show them here instead.
+    if (canvasType !== currentCanvasTypeRef.current) return;
     const live = useCanvasStore.getState().canvases[canvasType];
     if (live) broadcastChange(live.nodes, live.connections);
   }
@@ -202,6 +224,8 @@ export default function StoryBoard({ storyId, storyTitle, userId }: { storyId: s
       if (readOnly) return;
       const ct = findOwningCanvasType(id);
       if (ct) {
+        // Renaming a linked card renames the original (and its other links), and vice versa.
+        for (const u of linkedEdits(store.canvases, id, patch)) store.updateNode(u.canvasType, u.nodeId, u.patch);
         store.updateNode(ct, id, patch);
         broadcastCurrent(ct);
       }
@@ -383,6 +407,18 @@ export default function StoryBoard({ storyId, storyTitle, userId }: { storyId: s
     setTypesOpen(false);
   }
 
+  function linkExisting(original: StoryNode) {
+    if (readOnly || !currentCanvas) return;
+    const node = newNode(original.type ?? "character", linkFields(original));
+    Object.assign(node, insertionPosition(node));
+    setConnectMode(false);
+    setInspectorAnchor(null);
+    store.addNode(currentCanvasType, node);
+    broadcastCurrent(currentCanvasType);
+    setSelectedId(node.id);
+    setLinkOpen(false);
+  }
+
   async function handleExport() {
     const text = await exportStoryAsText(storyId, storyTitle);
     downloadText(`${storyTitle.replace(/[^\w\- ]/g, "")}.txt`, text);
@@ -407,6 +443,12 @@ export default function StoryBoard({ storyId, storyTitle, userId }: { storyId: s
       if (e.key === "Delete" || e.key === "Backspace") {
         if (selectedId) actions.deleteNode(selectedId);
         else if (selectedConnId) actions.deleteConnection(selectedConnId);
+      }
+      // Enter opens the selected folder/character/place (a link opens its original).
+      if (e.key === "Enter" && selectedId && tag !== "BUTTON" && tag !== "SELECT") {
+        const n = currentCanvas?.nodes.find((x) => x.id === selectedId);
+        const target = n?.refNodeId ? findNode(store.canvases, n.refNodeId)?.node : n;
+        if (target) actions.openNode(target);
       }
     }
     window.addEventListener("keydown", onKey);
@@ -446,6 +488,7 @@ export default function StoryBoard({ storyId, storyTitle, userId }: { storyId: s
         readOnly={readOnly}
         collapsed={sidebarCollapsed}
         onToggleCollapsed={() => setSidebarCollapsed((v) => !v)}
+        onLinkExisting={() => setLinkOpen(true)}
       />
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <Toolbar
@@ -460,6 +503,7 @@ export default function StoryBoard({ storyId, storyTitle, userId }: { storyId: s
           saveStatus={saveStatus}
           connectionStatus={connectionStatus}
           presence={Object.values(presenceState)}
+          onOpenTutorial={() => setTourOpen(true)}
         />
         <div className="editor-workspace relative min-h-0 flex-1">
           <div className="editor-canvas">
@@ -514,6 +558,10 @@ export default function StoryBoard({ storyId, storyTitle, userId }: { storyId: s
         />
       )}
       {feedbackOpen && <FeedbackModal onClose={() => setFeedbackOpen(false)} />}
+      {linkOpen && !readOnly && (
+        <LinkCharacterDialog canvases={store.canvases} currentCanvasType={currentCanvasType} onPick={linkExisting} onClose={() => setLinkOpen(false)} />
+      )}
+      {tourOpen && <TutorialTour onClose={() => setTourOpen(false)} />}
     </div>
   );
 }

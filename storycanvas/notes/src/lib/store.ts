@@ -159,7 +159,8 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
     const seen = new Map<string, { id: string; name: string; profileImageUrl?: string }>();
     for (const canvas of Object.values(get().canvases)) {
       for (const n of canvas.nodes) {
-        if (n.type === "character") seen.set(n.id, { id: n.id, name: n.text || "Unnamed", profileImageUrl: n.profileImageUrl });
+        // Linked cards point at a character that is already listed, so skip them (no duplicates).
+        if (n.type === "character" && !n.refNodeId) seen.set(n.id, { id: n.id, name: n.text || "Unnamed", profileImageUrl: n.profileImageUrl });
       }
     }
     return Array.from(seen.values());

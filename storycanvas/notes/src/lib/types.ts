@@ -48,6 +48,17 @@ export interface RelationshipConnection {
   reverseRelationshipType?: RelationshipType;
   reverseStrength?: 1 | 2 | 3;
   reverseLabel?: string;
+  // Set whenever this app edits a tie, so the shared registry can keep the newest copy.
+  updatedAt?: string;
+}
+
+// One story-wide list of ties (see lib/relationship-registry.ts). Every map shows the ties
+// between the people it contains, so the same pair is never drawn twice in different maps.
+export interface RelationshipRegistry {
+  version: 1;
+  relationships: RelationshipConnection[];
+  // Map-local tie ids already folded in, so a stale copy in another map is never re-imported.
+  importedIds: string[];
 }
 
 export interface StoryNode {
@@ -82,6 +93,10 @@ export interface StoryNode {
     selectedCharacters: { id: string; name: string; profileImageUrl?: string; position: { x: number; y: number } }[];
     relationships: RelationshipConnection[];
   };
+  // A linked card: shows and opens another character/location instead of being a copy.
+  refNodeId?: string;
+  // Only on the hidden registry node (canvas "story-relationships").
+  relationshipRegistry?: RelationshipRegistry;
   zIndex?: number;
   settings?: NodeSettings;
   // line-only: a curved arrow drawn through three points (same shape storycanvas saves)

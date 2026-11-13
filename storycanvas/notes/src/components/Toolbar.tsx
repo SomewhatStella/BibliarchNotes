@@ -2,7 +2,7 @@
 import WorkspaceLinks from "./WorkspaceLinks";
 import ThemeToggle from "./ThemeToggle";
 
-import { ChevronRight, Eye, Settings, Palette, UserPlus, MessageSquare, Download } from "lucide-react";
+import { ChevronRight, Eye, Settings, Palette, UserPlus, MessageSquare, Download, CircleHelp } from "lucide-react";
 import type { SaveStatus } from "@/lib/store";
 import type { ConnectionStatus, PresenceState } from "@/lib/realtime";
 
@@ -21,6 +21,7 @@ export default function Toolbar({
   saveStatus,
   connectionStatus,
   presence = [],
+  onOpenTutorial,
 }: {
   crumbs: { canvasType: string; label: string }[];
   onCrumb: (index: number) => void;
@@ -33,6 +34,8 @@ export default function Toolbar({
   saveStatus: SaveStatus;
   connectionStatus?: ConnectionStatus;
   presence?: PresenceState[];
+  /** Replays the guided tour (TutorialTour). */
+  onOpenTutorial?: () => void;
 }) {
   return (
     <div className="board-toolbar flex flex-wrap items-center gap-3 border-b border-ink-900/8 bg-parchment-50/95 px-4 py-2 backdrop-blur">
@@ -82,20 +85,21 @@ export default function Toolbar({
         )}
 
         <div className="flex items-center gap-1">
-          <IconButton icon={<UserPlus size={16} />} title="Share" onClick={onOpenShare} />
-          <IconButton icon={<Palette size={16} />} title="Color palette" onClick={onOpenPalette} />
+          <IconButton icon={<UserPlus size={16} />} title="Share" onClick={onOpenShare} tour="share" />
+          <IconButton icon={<Palette size={16} />} title="Color palette" onClick={onOpenPalette} tour="palette" />
           <IconButton icon={<Download size={16} />} title="Export" onClick={onExport} />
           <IconButton icon={<MessageSquare size={16} />} title="Send feedback" onClick={onOpenFeedback} />
           <IconButton icon={<Settings size={16} />} title="Canvas settings" onClick={onOpenSettings} />
+          {onOpenTutorial && <IconButton icon={<CircleHelp size={16} />} title="Tutorial" onClick={onOpenTutorial} tour="tutorial" />}
         </div>
       </div>
     </div>
   );
 }
 
-function IconButton({ icon, title, onClick }: { icon: React.ReactNode; title: string; onClick: () => void }) {
+function IconButton({ icon, title, onClick, tour }: { icon: React.ReactNode; title: string; onClick: () => void; tour?: string }) {
   return (
-    <button onClick={onClick} title={title} className="rounded-full p-1.5 text-ink-500 hover:bg-ink-900/5 hover:text-ink-900">
+    <button onClick={onClick} title={title} aria-label={title} data-tour={tour} className="rounded-full p-1.5 text-ink-500 hover:bg-ink-900/5 hover:text-ink-900">
       {icon}
     </button>
   );
