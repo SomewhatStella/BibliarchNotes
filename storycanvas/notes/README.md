@@ -117,6 +117,29 @@ something the UI waits on a round-trip to read back from. `getAllCharacters()`
 is exactly the read that used to break; it's a synchronous scan of in-memory
 state now, so it can't be stale by a save that hasn't landed.
 
+## Safety net (feedback round, Nov 2026)
+
+- **Node-by-node saves.** A save no longer upserts the whole board. Each
+  local edit records which cards/arrows it touched (`lib/node-merge.ts`); the
+  save re-reads the row, writes "server + my changed cards − my deleted
+  cards", and retries if `updated_at` moved in between. Only boards with
+  local changes are ever written, so an untouched (possibly stale) board can
+  no longer be saved over a collaborator's work. Broadcasts carry a per-card
+  `delta` (whole board still included for older clients) and receivers merge
+  it card by card.
+- **Undo/redo** (`lib/history.ts`, `lib/use-board-history.ts`): Ctrl/⌘+Z,
+  Ctrl+Y, Ctrl/⌘+Shift+Z and toolbar buttons. One drag = one step; typing in
+  one card coalesces. Undo reverts only the cards that step changed, then
+  saves and broadcasts like any edit. Remote changes never enter history.
+- **Recently deleted** and **Version history** (toolbar trash and clock
+  icons) need `supabase/migrations/20261112000000_safety_net.sql`
+  (`deleted_nodes`, `canvas_snapshots`). Without it the panels say history
+  isn't available yet and everything else works.
+- **Board templates** are only stamped when the server has no row for that
+  board, with ids derived from the board key, so a reconnect, a collaborator
+  opening the same new profile, or a not-yet-loaded board can't duplicate or
+  overwrite a template someone already filled in.
+
 ## Verification
 
 Both waves were driven end-to-end with Playwright against the real Supabase
@@ -177,6 +200,9 @@ building it:
 src/types/supabase.ts          Database type — every table, including Wave 2's
 src/lib/types.ts               field-for-field mirror of the live Node/Connection interfaces
 src/lib/store.ts               Wave 1's architecture fix — the in-memory source of truth
+src/lib/node-merge.ts          per-card change sets and merges (saves, broadcasts, reloads)
+src/lib/history.ts             undo/redo stack (pure)
+src/lib/safety-net.ts          Recently deleted + Version history (Supabase, optional tables)
 src/lib/realtime.ts            Wave 2's hard part — broadcast sync, locking, presence (ported close to storycanvas's own)
 src/lib/collaboration.ts       sharing CRUD — invites, share tokens, roles, the accept-invite RPC
 src/lib/node-factory.ts        default shapes per node type

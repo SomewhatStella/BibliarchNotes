@@ -11,6 +11,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import type { StoryConnection, StoryNode } from "@/lib/types";
+import type { BoardDelta } from "@/lib/node-merge";
 
 const REALTIME_PAYLOAD_WARN_BYTES = 200 * 1024;
 
@@ -38,7 +39,9 @@ function randomColor() {
 export function useRealtimeCanvas(
   storyId: string | null,
   canvasType: string,
-  onRemoteChange: (data: { nodes: StoryNode[]; connections: StoryConnection[]; userId: string }) => void,
+  // `delta`/`canvasType` come from this app's clients (node-by-node merge);
+  // older clients send only the whole board.
+  onRemoteChange: (data: { nodes: StoryNode[]; connections: StoryConnection[]; userId: string; canvasType?: string; delta?: BoardDelta }) => void,
   onNodeLock?: (data: LockedNode) => void,
   onNodeUnlock?: (data: { nodeId: string; odataUserId: string }) => void,
   onReconnect?: () => void
@@ -104,6 +107,8 @@ export function useRealtimeCanvas(
           nodes: payload.payload?.nodes ?? [],
           connections: payload.payload?.connections ?? [],
           userId: payload.payload?.userId ?? "remote",
+          canvasType: payload.payload?.canvasType,
+          delta: payload.payload?.delta,
         });
       })
       .on("broadcast", { event: "node-lock" }, (payload) => {
@@ -139,9 +144,11 @@ export function useRealtimeCanvas(
     };
   }, [storyId, canvasType, userIdLoaded]);
 
-  const broadcastChange = useCallback((nodes: StoryNode[], connections: StoryConnection[]) => {
+  // The whole board still goes out for older clients that only understand
+  // that; ours read `delta` and touch only the cards it names.
+  const broadcastChange = useCallback((nodes: StoryNode[], connections: StoryConnection[], extra?: { canvasType: string; delta: BoardDelta }) => {
     if (!channelRef.current) return;
-    const payload = { nodes, connections, userId: userIdRef.current };
+    const payload = { nodes, connections, userId: userIdRef.current, ...extra };
     const bytes = JSON.stringify(payload).length;
     if (bytes > REALTIME_PAYLOAD_WARN_BYTES) {
       console.error(

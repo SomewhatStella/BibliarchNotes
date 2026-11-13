@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { Lock, Unlock, X } from "lucide-react";
+import { Lock, Trash2, Unlock, X } from "lucide-react";
 import type { NodeSettings, StoryNode } from "@/lib/types";
 import TypeIcon from "./TypeIcon";
 
@@ -17,11 +17,13 @@ export default function NodeInspector({
 
   onChange,
   onClose,
+  onDelete,
 }: {
   node: StoryNode;
   anchor: { x: number; y: number };
   onChange: (patch: Partial<StoryNode>) => void;
   onClose: () => void;
+  onDelete?: () => void;
 }) {
   const settings = node.settings ?? {};
   const colorInputRef = useRef<HTMLInputElement>(null);
@@ -128,6 +130,16 @@ export default function NodeInspector({
           )}
         </div>
       </Section>
+
+      {/* Delete used to exist only as the Delete key and an unlabeled ×; this is the findable one. */}
+      {onDelete && (
+        <button
+          onClick={onDelete}
+          className="mt-1 flex w-full items-center justify-center gap-1.5 rounded-xl bg-bibliarch-rose/10 py-2 text-[12.5px] font-semibold text-bibliarch-rose hover:bg-bibliarch-rose/20"
+        >
+          <Trash2 size={13} /> Delete card
+        </button>
+      )}
     </div>
   );
 }

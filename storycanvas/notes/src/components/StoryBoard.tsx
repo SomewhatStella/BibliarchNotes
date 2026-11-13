@@ -23,6 +23,11 @@ import PaletteEditor from "./PaletteEditor";
 import CustomTypesDialog from "./CustomTypesDialog";
 import { instantiateTemplate, snapshotInteriors, type CustomTemplate } from "@/lib/custom-templates";
 import { boardTemplateKey, instantiateBoardTemplate } from "@/lib/board-templates";
+import { useBoardHistory } from "@/lib/use-board-history";
+import { boardOf, maybeSnapshot, markRestored, recordDeletedNode, type DeletedRecord, type SnapshotRecord } from "@/lib/safety-net";
+import { captureDeleted } from "@/lib/restore";
+import RecentlyDeletedPanel from "./RecentlyDeletedPanel";
+import VersionHistoryPanel from "./VersionHistoryPanel";
 
 type Crumb = { canvasType: string; label: string };
 
@@ -47,7 +52,10 @@ export default function StoryBoard({ storyId, storyTitle, userId }: { storyId: s
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [typesOpen, setTypesOpen] = useState(false);
   // "Moved X into Y" with Undo, after dropping a card onto a folder or character.
-  const [dropNotice, setDropNotice] = useState<{ text: string; undo: () => void } | null>(null);
+  // `stepId` is that drop's undo step; the button only shows while it's still the latest step.
+  const [dropNotice, setDropNotice] = useState<{ text: string; stepId: number | null } | null>(null);
+  const [trashOpen, setTrashOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   useEffect(() => {
     if (!dropNotice) return;
     const t = setTimeout(() => setDropNotice(null), 6000);
@@ -71,7 +79,8 @@ export default function StoryBoard({ storyId, storyTitle, userId }: { storyId: s
       // once, in the background.
       const canvases = useCanvasStore.getState().canvases;
       migrateLegacyImages(canvases, (canvasType, nodeId, field, path) => {
-        store.updateNode(canvasType, nodeId, { [field]: path });
+        // Housekeeping, not the user's edit: Ctrl+Z must never put the base64 back.
+        store.withoutHistory(() => store.updateNode(canvasType, nodeId, { [field]: path }));
       });
     });
     getStoryAccess(storyId).then(setAccess);
@@ -141,7 +150,9 @@ export default function StoryBoard({ storyId, storyTitle, userId }: { storyId: s
   const { broadcastChange, broadcastNodeLock, broadcastNodeUnlock, connectionStatus } = useRealtimeCanvas(
     storyId,
     currentCanvasType,
-    (data) => store.applyRemoteCanvas(currentCanvasTypeRef.current, data.nodes, data.connections),
+    // Merged card by card (never a whole-board replace), so a collaborator's
+    // change can't wipe my unsaved edit to a different card.
+    (data) => store.applyRemoteChange(data.canvasType ?? currentCanvasTypeRef.current, data),
     (lock) => setLockedNodes((prev) => ({ ...prev, [lock.nodeId]: lock })),
     ({ nodeId }) =>
       setLockedNodes((prev) => {
@@ -172,10 +183,33 @@ export default function StoryBoard({ storyId, storyTitle, userId }: { storyId: s
 
   const { presenceState } = usePresence(storyId, currentCanvasType, username);
 
+  // Sends only the cards changed since the last broadcast (plus the whole
+  // board for older clients). Other boards aren't on this channel: their
+  // changes are saved node by node and fetched fresh when someone opens them.
   function broadcastCurrent(canvasType: string) {
+    const delta = useCanvasStore.getState().takeBroadcastDelta(canvasType);
     const live = useCanvasStore.getState().canvases[canvasType];
-    if (live) broadcastChange(live.nodes, live.connections);
+    if (delta && live && canvasType === currentCanvasTypeRef.current) broadcastChange(live.nodes, live.connections, { canvasType, delta });
   }
+
+  // Undo/redo save and broadcast exactly like any other edit.
+  function runHistory(direction: "undo" | "redo") {
+    if (readOnly) return;
+    const touched = direction === "undo" ? store.undo() : store.redo();
+    touched.forEach(broadcastCurrent);
+    setDropNotice(null);
+  }
+  useBoardHistory(!readOnly, () => runHistory("undo"), () => runHistory("redo"));
+
+  // Re-read a board when navigating to it, so a board cached since page load
+  // shows what collaborators have saved since (merged under unsaved edits).
+  const syncedOnce = useRef(false);
+  const freshlyOpened = useRef<string | null>(null);
+  useEffect(() => {
+    if (!syncedOnce.current) { syncedOnce.current = true; return; } // loadStory just fetched everything
+    if (freshlyOpened.current === currentCanvasType) { freshlyOpened.current = null; return; } // openNode is already syncing it
+    useCanvasStore.getState().syncBoard(currentCanvasType);
+  }, [currentCanvasType]);
 
   function findOwningCanvasType(nodeId: string): string | undefined {
     return Object.values(store.canvases).find((c) => c.nodes.some((n) => n.id === nodeId))?.canvas_type;
@@ -210,8 +244,11 @@ export default function StoryBoard({ storyId, storyTitle, userId }: { storyId: s
       if (readOnly) return;
       const ct = findOwningCanvasType(id);
       if (ct) {
+        // Kept for 30 days in Recently deleted, so a mistaken delete is never silent and final.
+        const captured = captureDeleted(boardOf(store.canvases[ct]!), id);
         store.deleteNode(ct, id);
         broadcastCurrent(ct);
+        if (captured) void recordDeletedNode(storyId, ct, captured.node, captured.members, captured.connections);
       }
       setSelectedId((s) => (s === id ? null : s));
       setInspectorAnchor((a) => (a?.nodeId === id ? null : a));
@@ -220,16 +257,17 @@ export default function StoryBoard({ storyId, storyTitle, userId }: { storyId: s
       if (node.type !== "folder" && node.type !== "character" && node.type !== "location" && !(node.type === "event" && node.linkedCanvasId)) return;
       // Legacy Storycanvas uses stable type-canvas-node IDs without links.
       const canvasType = node.linkedCanvasId || `${node.type}-canvas-${node.id}`;
-      const firstTime = !store.canvases[canvasType];
-      store.ensureCanvas(canvasType);
-      // A board opened for the first time starts from its template (character profile, planner folders…).
-      if (firstTime && !readOnly) {
-        const key = boardTemplateKey(canvasType, node);
-        const filled = key ? instantiateBoardTemplate(key) : null;
-        if (filled) {
-          filled.nodes.forEach((n) => store.addNode(canvasType, n));
-          filled.connections.forEach((c) => store.addConnection(canvasType, c));
-        }
+      if (!store.canvases[canvasType]) {
+        store.ensureCanvas(canvasType);
+        // "Not in my store" isn't "never made": a collaborator may have made it
+        // since I loaded. Only a board the SERVER has no row for gets its
+        // template (character profile, planner folders…), with ids fixed per
+        // board so two people opening it at once can't stack two templates.
+        const key = readOnly ? null : boardTemplateKey(canvasType, node);
+        freshlyOpened.current = canvasType;
+        store.syncBoard(canvasType, key ? () => instantiateBoardTemplate(key, canvasType) : null).then((filled) => {
+          if (filled) broadcastCurrent(canvasType);
+        });
       }
       setCrumbs((cr) => [...cr, { canvasType, label: node.text || node.title || "Untitled" }]);
       setSelectedId(null);
@@ -304,16 +342,9 @@ export default function StoryBoard({ storyId, storyTitle, userId }: { storyId: s
       store.deleteNode(ct, nodeId);
       broadcastCurrent(ct);
       setSelectedId(null);
-      const moved = { ...node, x: 80, y: below + 40 };
       setDropNotice({
         text: `Moved “${node.text || node.title || "card"}” into ${target.text || target.title || "that card"}`,
-        undo: () => {
-          store.deleteNode(boardKey, moved.id);
-          members.forEach((m) => store.deleteNode(boardKey, m.id));
-          store.addNode(ct, node);
-          members.forEach((m) => store.addNode(ct, m));
-          broadcastCurrent(ct);
-        },
+        stepId: useCanvasStore.getState().undoTopId,
       });
     },
     async uploadNodeImage(nodeId, file) {
@@ -388,6 +419,23 @@ export default function StoryBoard({ storyId, storyTitle, userId }: { storyId: s
     downloadText(`${storyTitle.replace(/[^\w\- ]/g, "")}.txt`, text);
   }
 
+  async function restoreDeletedCard(rec: DeletedRecord): Promise<boolean> {
+    const ok = await store.restoreCard(rec.canvas_type, rec);
+    if (ok) broadcastCurrent(rec.canvas_type);
+    void markRestored(rec.id);
+    return ok;
+  }
+
+  async function restoreVersion(snap: SnapshotRecord) {
+    const live = useCanvasStore.getState().canvases[snap.canvas_type];
+    // The board as it is now becomes a version too, so the restore can itself be undone from any device.
+    if (live) await maybeSnapshot(storyId, snap.canvas_type, boardOf(live), { force: true, reason: "before restore" });
+    store.replaceBoard(snap.canvas_type, { nodes: snap.nodes ?? [], connections: snap.connections ?? [] });
+    broadcastCurrent(snap.canvas_type);
+    setSelectedId(null);
+    setHistoryOpen(false);
+  }
+
   function handleSetPalette(next: ColorPalette) {
     store.setPalette(next);
     broadcastCurrent("main");
@@ -458,6 +506,12 @@ export default function StoryBoard({ storyId, storyTitle, userId }: { storyId: s
           onExport={handleExport}
           onOpenSettings={() => setSettingsOpen(true)}
           saveStatus={saveStatus}
+          canUndo={store.canUndo}
+          canRedo={store.canRedo}
+          onUndo={() => runHistory("undo")}
+          onRedo={() => runHistory("redo")}
+          onOpenTrash={() => setTrashOpen(true)}
+          onOpenHistory={() => setHistoryOpen(true)}
           connectionStatus={connectionStatus}
           presence={Object.values(presenceState)}
         />
@@ -488,7 +542,9 @@ export default function StoryBoard({ storyId, storyTitle, userId }: { storyId: s
           {dropNotice && (
             <div role="status" className="pop-in absolute bottom-12 left-1/2 z-30 flex -translate-x-1/2 items-center gap-3 rounded-full bg-ink-900 px-4 py-2 text-[12.5px] text-white shadow-card">
               {dropNotice.text}
-              <button onClick={() => { dropNotice.undo(); setDropNotice(null); }} className="rounded-full bg-white/20 px-2.5 py-0.5 text-[12px] font-semibold">Undo</button>
+              {dropNotice.stepId !== null && store.undoTopId === dropNotice.stepId && (
+                <button onClick={() => runHistory("undo")} className="rounded-full bg-white/20 px-2.5 py-0.5 text-[12px] font-semibold">Undo</button>
+              )}
             </div>
           )}
           {inspectorNode && !readOnly && (
@@ -496,6 +552,7 @@ export default function StoryBoard({ storyId, storyTitle, userId }: { storyId: s
               node={inspectorNode}
               anchor={inspectorAnchor!}
               onChange={(patch) => actions.editNode(inspectorNode.id, patch)}
+              onDelete={() => actions.deleteNode(inspectorNode.id)}
               onClose={() => setInspectorAnchor(null)}
             />
           )}
@@ -514,6 +571,19 @@ export default function StoryBoard({ storyId, storyTitle, userId }: { storyId: s
         />
       )}
       {feedbackOpen && <FeedbackModal onClose={() => setFeedbackOpen(false)} />}
+      {trashOpen && (
+        <RecentlyDeletedPanel storyId={storyId} canvases={store.canvases} readOnly={readOnly} onRestore={restoreDeletedCard} onClose={() => setTrashOpen(false)} />
+      )}
+      {historyOpen && (
+        <VersionHistoryPanel
+          storyId={storyId}
+          canvasType={currentCanvasType}
+          boardLabel={crumbs[crumbs.length - 1]!.label}
+          readOnly={readOnly}
+          onRestore={restoreVersion}
+          onClose={() => setHistoryOpen(false)}
+        />
+      )}
     </div>
   );
 }
