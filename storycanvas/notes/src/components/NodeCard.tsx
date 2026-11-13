@@ -608,8 +608,10 @@ function TableBody({ node, actions, showControls, readOnly = false }: { node: St
             <col style={{ width: 24 }} />
           </colgroup>
         )}
-        {/* Template tables (e.g. a character's details) use internal names like col1/col2; storycanvas never showed those as headings. */}
-        {(showControls || !columns.every((c) => /^col\d+$/.test(c))) && node.settings?.show_header_row !== false && (
+        {/* Template tables (e.g. a character's details) use internal names like col1/col2; storycanvas never showed those as headings.
+            They stay hidden even while the card is selected: popping a header row in on the first click shoved every
+            row down ~28px under the cursor, so the click meant for one cell landed in another (feedback item 12). */}
+        {!columns.every((c) => /^col\d+$/.test(c)) && node.settings?.show_header_row !== false && (
         <thead className="h-7">
           <tr>
             {columns.map((col) => (

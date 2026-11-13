@@ -89,6 +89,9 @@ export default function ComicPage({scene, assets = [], width, height, widthMm, h
   const end = () => { const g = gesture.current; if (!g) return; gesture.current = null; if (g.moved && draftRef.current) save(draftRef.current); else setDraft(null); };
   const commitDraft = () => { if (draftRef.current) save(draftRef.current); };
 
+  // A new bubble's starter text ("Hello!") is selected when it opens, so typing replaces it
+  // instead of landing in front of it. Existing bubbles keep the caret where the user clicks.
+  const freshBubble = useRef<string | null>(null);
   const addBubble = (kind: ComicBubbleKind) => {
     if (!selected) return;
     const i = selected.panel, b = boxes[i], list = comic.panels[i].bubbles || [];
@@ -97,6 +100,7 @@ export default function ComicPage({scene, assets = [], width, height, widthMm, h
     const bubble: ComicBubble = {id: crypto.randomUUID(), kind, text: kind === 'caption' ? 'Meanwhile…' : kind === 'thought' ? 'Hmm…' : 'Hello!', width,
       x: kind === 'caption' ? b.left + 2 : b.left + (b.width - width) / 2, y: kind === 'caption' ? b.top + 2 : b.top + b.height * 0.12 + list.length * 3, sizePt: 9, tail: kind === 'caption' ? undefined : 'bottom-left'};
     save(patchPanel(i, {bubbles: [...list, bubble]}));
+    freshBubble.current = bubble.id;
     setSelected({panel: i, bubble: bubble.id});
   };
   const pick = (i: number) => { uploadTarget.current = i; file.current?.click(); };
@@ -137,6 +141,7 @@ export default function ComicPage({scene, assets = [], width, height, widthMm, h
         onPointerDown={e => { if ((e.target as HTMLElement).closest('textarea,.comic-resize')) return; setSelected({panel: i, bubble: b.id}); begin(e, 'move', i, b.id); }}
         onPointerMove={drag} onPointerUp={end} onPointerCancel={end} onLostPointerCapture={end}>
         {isSel ? <textarea aria-label={`${BUBBLE_LABEL[b.kind]} text`} value={b.text} maxLength={2000} rows={Math.max(1, b.text.split('\n').length)} autoFocus
+          onFocus={e => { if (freshBubble.current === b.id) { freshBubble.current = null; e.currentTarget.select(); } }}
           onChange={e => save(patchBubble(i, b.id, {text: e.target.value}))} onPointerDown={e => e.stopPropagation()}/> : b.text || ' '}
         {b.kind !== 'caption' && b.tail && b.tail !== 'none' && <span className={`comic-tail ${b.tail}`}/>}
         {isSel && <span className="comic-resize comic-editor-only" role="slider" aria-label="Bubble width" aria-valuenow={Math.round(b.width)} aria-valuemin={5} aria-valuemax={100} tabIndex={0}

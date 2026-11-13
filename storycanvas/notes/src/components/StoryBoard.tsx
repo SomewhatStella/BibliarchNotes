@@ -410,7 +410,9 @@ export default function StoryBoard({ storyId, storyTitle, userId }: { storyId: s
     const right = Math.max(left, vp.x + vp.width - node.width - 16);
     const bottom = Math.max(top, vp.y + vp.height - node.height - 16);
     const center = {x: (left + right) / 2, y: (top + bottom) / 2};
-    const visible = (currentCanvas?.nodes ?? []).filter(n => !n.parentId && n.x < vp.x + vp.width && n.y < vp.y + vp.height && n.x + n.width > vp.x && n.y + n.height > vp.y);
+    // Section frames sit behind cards, so they never count as taken space — otherwise one big frame
+    // left no "free" spot and new cards landed on top of existing ones.
+    const visible = (currentCanvas?.nodes ?? []).filter(n => !n.parentId && !(n.type === "shape" && n.shape?.kind === "frame") && n.type !== "line" && n.x < vp.x + vp.width && n.y < vp.y + vp.height && n.x + n.width > vp.x && n.y + n.height > vp.y);
     const free = (x: number, y: number) => !visible.some(n => x < n.x + n.width + 12 && x + node.width + 12 > n.x && y < n.y + n.height + 12 && y + node.height + 12 > n.y);
     if (free(center.x, center.y)) return center;
     for (let y = top; y <= bottom; y += 32) {
@@ -458,7 +460,18 @@ export default function StoryBoard({ storyId, storyTitle, userId }: { storyId: s
     const vp = viewport.current;
     const made = template.build(generateId);
     const box = templateBounds(made.nodes);
-    const dx = Math.round(Math.max(0, vp.x + 40) - box.x), dy = Math.round(Math.max(0, vp.y + 40) - box.y);
+    // Top-left of the view if that's empty; otherwise below everything already on the board, so a
+    // template never lands on top of existing cards — then scroll the view to it.
+    const taken = (currentCanvas.nodes ?? []).filter((n) => !n.parentId && n.type !== "line");
+    const overlaps = (x: number, y: number) => taken.some((n) => x < n.x + n.width && x + box.w > n.x && y < n.y + n.height && y + box.h > n.y);
+    let tx = Math.max(0, vp.x + 40), ty = Math.max(0, vp.y + 40);
+    let scrollToIt = false;
+    if (overlaps(tx, ty)) {
+      tx = Math.max(40, Math.min(...taken.map((n) => n.x)));
+      ty = Math.max(...taken.map((n) => n.y + n.height)) + 120;
+      scrollToIt = true;
+    }
+    const dx = Math.round(tx - box.x), dy = Math.round(ty - box.y);
     const nodes = made.nodes.map((n) => ({ ...n, x: n.x + dx, y: n.y + dy }));
     const ct = currentCanvasType;
     // The whole layout is one undo step, so the notice's Undo (and Ctrl+Z) removes all of it at once.
@@ -468,6 +481,13 @@ export default function StoryBoard({ storyId, storyTitle, userId }: { storyId: s
     const stepId = useCanvasStore.getState().undoTopId;
     store.endGesture();
     broadcastCurrent(ct);
+    if (scrollToIt) {
+      const ground = document.querySelector<HTMLElement>(".canvas-ground");
+      if (ground) {
+        const zoom = ground.clientWidth / Math.max(1, vp.width);
+        requestAnimationFrame(() => ground.scrollTo({ left: Math.max(0, (tx - 40) * zoom), top: Math.max(0, (ty - 40) * zoom), behavior: "smooth" }));
+      }
+    }
     setConnectMode(false);
     setPenMode(false);
     setInspectorAnchor(null);

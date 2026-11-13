@@ -1,7 +1,11 @@
 export type CloudSession={access_token:string;refresh_token?:string;expires_at:number;user:{id:string;email?:string}};
 export type CloudProject={id:string;name:string;owner_id:string;version:number;content:any;updated_at:string};
 export class CloudConflict extends Error{constructor(){super('Remote project changed. Reload explicitly or merge manually before saving.');this.name='CloudConflict';}}
-export function validateCloudUrl(value:string,allowLocalhost=false):string{
+// A local Supabase (http://127.0.0.1:54321) is accepted only when the page itself is served from
+// localhost, i.e. local development. bibliarch.com can never be served from localhost, so the live
+// site keeps requiring https://PROJECT.supabase.co.
+const servedLocally=()=>typeof window!=='undefined'&&['localhost','127.0.0.1'].includes(window.location.hostname);
+export function validateCloudUrl(value:string,allowLocalhost=servedLocally()):string{
  const u=new URL(value.trim());const local=allowLocalhost&&u.protocol==='http:'&&['127.0.0.1','localhost'].includes(u.hostname);
  if((!local&&(u.protocol!=='https:'||! /^[a-z0-9-]+\.supabase\.co$/.test(u.hostname)||!!u.port))||u.username||u.password||u.search||u.hash||(u.pathname!=='/'&&u.pathname!==''))throw new Error('Use your HTTPS https://PROJECT.supabase.co project URL (no path or credentials).');return u.origin;
 }
