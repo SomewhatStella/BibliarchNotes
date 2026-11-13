@@ -1,8 +1,9 @@
 "use client";
 import WorkspaceLinks from "./WorkspaceLinks";
 import ThemeToggle from "./ThemeToggle";
+import ExportMenu from "./ExportMenu";
 
-import { ChevronRight, Eye, Settings, Palette, UserPlus, MessageSquare, Download, Undo2, Redo2, ArchiveRestore, History, CircleHelp } from "lucide-react";
+import { ChevronRight, Eye, Settings, Palette, UserPlus, MessageSquare, Undo2, Redo2, ArchiveRestore, History, CircleHelp } from "lucide-react";
 import type { SaveStatus } from "@/lib/store";
 import type { ConnectionStatus, PresenceState } from "@/lib/realtime";
 
@@ -17,6 +18,7 @@ export default function Toolbar({
   onOpenPalette,
   onOpenFeedback,
   onExport,
+  onExportPicture,
   onOpenSettings,
   saveStatus,
   connectionStatus,
@@ -36,6 +38,8 @@ export default function Toolbar({
   onOpenPalette: () => void;
   onOpenFeedback: () => void;
   onExport: () => void;
+  /** Saves this board as a PNG; resolves to a short message for the user, or null. */
+  onExportPicture: () => Promise<string | null>;
   onOpenSettings: () => void;
   saveStatus: SaveStatus;
   connectionStatus?: ConnectionStatus;
@@ -110,7 +114,7 @@ export default function Toolbar({
           {onOpenHistory && <IconButton icon={<History size={16} />} title="Version history" onClick={onOpenHistory} />}
           <IconButton icon={<UserPlus size={16} />} title="Share" onClick={onOpenShare} tour="share" />
           <IconButton icon={<Palette size={16} />} title="Color palette" onClick={onOpenPalette} tour="palette" />
-          <IconButton icon={<Download size={16} />} title="Export" onClick={onExport} />
+          <ExportMenu onPicture={onExportPicture} onText={onExport} />
           <IconButton icon={<MessageSquare size={16} />} title="Send feedback" onClick={onOpenFeedback} />
           <IconButton icon={<Settings size={16} />} title="Canvas settings" onClick={onOpenSettings} />
           {onOpenTutorial && <IconButton icon={<CircleHelp size={16} />} title="Tutorial" onClick={onOpenTutorial} tour="tutorial" />}

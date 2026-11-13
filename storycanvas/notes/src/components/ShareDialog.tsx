@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X, Search, UserPlus, Eye, Edit3, Trash2, LogOut, Link as LinkIcon, Copy, Check, Clock, Crown } from "lucide-react";
+import { X, Search, UserPlus, Eye, Edit3, Trash2, LogOut, Link as LinkIcon, Copy, Check, Clock, Crown, Globe } from "lucide-react";
+import { getPublicLink, publicUrl, turnOffPublicLink, turnOnPublicLink } from "@/lib/public-links";
 import * as collab from "@/lib/collaboration";
 import type { Collaborator, ShareToken } from "@/lib/collaboration";
 import { useEscape } from "@/lib/use-escape";
@@ -30,6 +31,10 @@ export default function ShareDialog({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [copiedTokenId, setCopiedTokenId] = useState<string | null>(null);
+  // Public view link: undefined = loading, null = off, "unavailable" = the database update isn't in yet.
+  const [publicToken, setPublicToken] = useState<string | null | undefined | "unavailable">(undefined);
+  const [publicBusy, setPublicBusy] = useState(false);
+  const [publicCopied, setPublicCopied] = useState(false);
 
   async function refreshCollaborators() {
     try {
@@ -46,6 +51,40 @@ export default function ShareDialog({
       /* non-fatal — share links are a convenience, not required */
     }
   }
+  useEffect(() => {
+    if (!isOwner) return;
+    getPublicLink(storyId).then(setPublicToken, () => setPublicToken("unavailable"));
+  }, [storyId, isOwner]);
+
+  async function togglePublic() {
+    setPublicBusy(true);
+    try {
+      if (publicToken && publicToken !== "unavailable") {
+        await turnOffPublicLink(storyId);
+        setPublicToken(null);
+        setSuccess("Public link turned off. The old link no longer works.");
+      } else {
+        const token = await turnOnPublicLink(storyId);
+        setPublicToken(token);
+        copyPublic(token);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't change the public link");
+    } finally {
+      setPublicBusy(false);
+    }
+  }
+
+  function copyPublic(token: string) {
+    navigator.clipboard.writeText(publicUrl(token)).then(
+      () => {
+        setPublicCopied(true);
+        setTimeout(() => setPublicCopied(false), 1800);
+      },
+      () => {},
+    );
+  }
+
   useEffect(() => {
     refreshCollaborators();
     refreshTokens();
@@ -190,6 +229,37 @@ They'll be able to share it, change who has access and delete it. You'll stay on
             <p className={`mb-3 rounded-lg px-3 py-2 text-[12.5px] ${error ? "bg-bibliarch-rose/8 text-bibliarch-rose" : "bg-bibliarch-blue/8 text-bibliarch-blue"}`}>
               {error || success}
             </p>
+          )}
+
+          {isOwner && publicToken !== "unavailable" && (
+            <div className="public-link mb-5 rounded-xl p-3">
+              <div className="flex items-start gap-2.5">
+                <Globe size={16} className="mt-0.5 flex-none text-bibliarch-blue" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-[13px] font-semibold text-ink-900">Public view link</p>
+                  <p className="text-[11.5px] leading-snug text-ink-500">
+                    {publicToken
+                      ? "Anyone with this link can look around this story. They can't change anything, and they don't need an account."
+                      : "Show this story to anyone (on TikTok, Discord, anywhere) without them signing up. They can look but not change anything."}
+                  </p>
+                </div>
+              </div>
+              {publicToken && (
+                <div className="mt-2 flex items-center gap-2 rounded-lg bg-editor-raised px-2.5 py-1.5 text-[12px]">
+                  <span className="flex-1 truncate font-mono text-ink-700">{publicUrl(publicToken).replace(/^https?:\/\//, "")}</span>
+                  <button onClick={() => copyPublic(publicToken)} className="flex flex-none items-center gap-1 font-semibold text-bibliarch-blue">
+                    {publicCopied ? <Check size={13} /> : <Copy size={13} />} {publicCopied ? "Copied" : "Copy"}
+                  </button>
+                </div>
+              )}
+              <button
+                onClick={togglePublic}
+                disabled={publicBusy || publicToken === undefined}
+                className={`mt-2 w-full rounded-lg py-1.5 text-[12.5px] font-semibold disabled:opacity-50 ${publicToken ? "bg-ink-900/5 text-ink-700" : "bg-bibliarch-blue text-white"}`}
+              >
+                {publicBusy ? "One moment…" : publicToken ? "Turn off public link" : "Turn on and copy link"}
+              </button>
+            </div>
           )}
 
           {isOwner && (

@@ -104,6 +104,8 @@ $$;
 
 alter table public.stories enable row level security;
 create policy stories_read on public.stories for select to authenticated using (public.story_role(id) is not null);
+-- A story you just inserted isn't visible to story_role() yet (same statement), so insert…returning needs this.
+create policy stories_read_own on public.stories for select to authenticated using (user_id = auth.uid());
 create policy stories_insert on public.stories for insert to authenticated with check (user_id = auth.uid());
 create policy stories_update on public.stories for update to authenticated using (public.story_role(id) in ('owner', 'editor'));
 create policy stories_delete on public.stories for delete to authenticated using (user_id = auth.uid());

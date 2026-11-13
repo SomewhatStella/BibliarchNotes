@@ -4,7 +4,7 @@ import OverviewNavigation from "./OverviewNavigation";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { BookOpen, Plus, LogOut, Shield, Mail, Check, X, Settings, Trash2, LogOut as LeaveIcon } from "lucide-react";
+import { BookOpen, LayoutTemplate, Square, Sparkles, Plus, LogOut, Shield, Mail, Check, X, Settings, Trash2, LogOut as LeaveIcon } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { storyTemplates } from "@/lib/story-templates";
 import { tidyTemplateNodes } from "@/lib/board-templates";
@@ -17,7 +17,9 @@ export default function Dashboard({ userId, username }: { userId: string; userna
   const [stories, setStories] = useState<Story[] | null>(null);
   const [creating, setCreating] = useState(false);
   const [title, setTitle] = useState("");
-  const [templateId, setTemplateId] = useState("blank");
+  // The story planner by default: new writers who started blank mostly left with an empty board.
+  const [templateId, setTemplateId] = useState("basic");
+  const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [invitations, setInvitations] = useState<MyInvitation[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -75,9 +77,12 @@ export default function Dashboard({ userId, username }: { userId: string; userna
     }
   }
 
-  async function createStory() {
-    const trimmed = title.trim();
-    if (!trimmed) return;
+  async function createStory(opts?: { title?: string; templateId?: string }) {
+    if (starting) return;
+    // A title is optional; an empty one used to make the Create button silently do nothing.
+    const trimmed = (opts?.title ?? title).trim() || (stories?.length ? "Untitled story" : "My first story");
+    const chosen = opts?.templateId ?? templateId;
+    setStarting(true);
     const supabase = createClient();
     const { data, error } = await supabase
       .from("stories")
@@ -86,10 +91,11 @@ export default function Dashboard({ userId, username }: { userId: string; userna
       .single();
     if (error) {
       setError(error.message);
+      setStarting(false);
       return;
     }
     // Same as storycanvas: a template's boards are written before the story opens.
-    const template = storyTemplates.find((t) => t.id === templateId);
+    const template = storyTemplates.find((t) => t.id === chosen);
     if (template && template.nodes.length) {
       const rows = [
         // Tidied for the new Notes card sizes, and without linking arrows.
@@ -175,6 +181,34 @@ export default function Dashboard({ userId, username }: { userId: string; userna
           </div>
         )}
 
+        {stories?.length === 0 && !creating && (
+          <section className="welcome-panel emboss mb-8 rounded-2xl p-6 md:p-8" aria-labelledby="welcome-title">
+            <p className="flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.16em] text-ink-500">
+              <Sparkles size={13} /> Welcome
+            </p>
+            <h2 id="welcome-title" className="mt-1 font-display text-2xl font-semibold text-ink-900">
+              Let&rsquo;s start your first story
+            </h2>
+            <p className="mt-1 max-w-xl text-[14px] text-ink-500">
+              Pick how you&rsquo;d like to begin. It opens straight away, and you can change everything later.
+            </p>
+            <div className="mt-5 grid gap-3 md:grid-cols-2">
+              <button type="button" disabled={starting} onClick={() => createStory({ templateId: "basic" })} className="welcome-choice is-recommended">
+                <span className="welcome-badge">Recommended</span>
+                <LayoutTemplate size={22} />
+                <strong>Story planner</strong>
+                <span>Ready-made folders for your characters, plot and world, a story-development checklist and a plot timeline. Just fill in the blanks.</span>
+              </button>
+              <button type="button" disabled={starting} onClick={() => createStory({ templateId: "blank" })} className="welcome-choice">
+                <Square size={22} />
+                <strong>Blank board</strong>
+                <span>An empty board with every tool. For when you already know how you want to lay things out.</span>
+              </button>
+            </div>
+            {starting && <p className="mt-3 text-[13px] text-ink-500">Opening your story…</p>}
+          </section>
+        )}
+
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {stories?.map((s) => (
             <div key={s.id} className="emboss group relative flex flex-col gap-3 rounded-2xl p-5 text-left">
@@ -209,11 +243,11 @@ export default function Dashboard({ userId, username }: { userId: string; userna
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && createStory()}
-                placeholder="Story title…"
+                placeholder="Story title (you can leave this blank)"
                 className="rounded-lg border border-ink-900/10 bg-white px-3 py-2 text-[15px] outline-none focus:border-bibliarch-blue"
               />
               <div role="radiogroup" aria-label="Start from" className="flex flex-col gap-1.5">
-                {storyTemplates.map((t) => (
+                {[...storyTemplates].sort((a, b) => Number(b.id === "basic") - Number(a.id === "basic")).map((t) => (
                   <button
                     key={t.id}
                     type="button"
@@ -222,14 +256,14 @@ export default function Dashboard({ userId, username }: { userId: string; userna
                     onClick={() => setTemplateId(t.id)}
                     className={`rounded-lg border px-3 py-2 text-left ${templateId === t.id ? "border-bibliarch-blue bg-bibliarch-blue/8" : "border-ink-900/10 hover:border-ink-900/25"}`}
                   >
-                    <span className="block text-[13px] font-semibold text-ink-900">{t.id === "blank" ? "Blank board" : "Story planner"}</span>
+                    <span className="block text-[13px] font-semibold text-ink-900">{t.id === "blank" ? "Blank board" : "Story planner (recommended)"}</span>
                     <span className="block text-[11.5px] leading-snug text-ink-500">{t.id === "blank" ? "Start from nothing" : "Ready-made folders for characters, plot and world, a story-development list and a plot timeline"}</span>
                   </button>
                 ))}
               </div>
               <div className="flex gap-2">
-                <button onClick={createStory} className="flex-1 rounded-lg bg-bibliarch-blue px-3 py-2 text-[13px] font-semibold text-white">
-                  Create
+                <button onClick={() => createStory()} disabled={starting} className="flex-1 rounded-lg bg-bibliarch-blue px-3 py-2 text-[13px] font-semibold text-white disabled:opacity-60">
+                  {starting ? "Opening…" : "Create"}
                 </button>
                 <button onClick={() => setCreating(false)} className="rounded-lg px-3 py-2 text-[13px] text-ink-500">
                   Cancel
@@ -247,9 +281,6 @@ export default function Dashboard({ userId, username }: { userId: string; userna
           )}
         </div>
 
-        {stories?.length === 0 && !creating && (
-          <p className="mt-6 text-[14px] text-ink-500">No stories yet — create your first one.</p>
-        )}
 
         {confirmDelete && (
           <div className="fixed inset-0 z-[200] flex items-center justify-center bg-ink-900/15" onClick={() => !deleting && setConfirmDelete(null)}>

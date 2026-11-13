@@ -36,6 +36,10 @@ import { findNode, linkFields, linkedEdits } from "@/lib/character-links";
 import { persistRegistryMigration } from "@/lib/use-shared-relationships";
 import LinkCharacterDialog from "./LinkCharacterDialog";
 import TutorialTour, { tourSeen } from "./TutorialTour";
+import EmptyBoardHint from "./EmptyBoardHint";
+import { boardPicture, downloadBlob, safeFileName } from "@/lib/board-image";
+import { storyTemplates } from "@/lib/story-templates";
+import { tidyTemplateNodes } from "@/lib/board-templates";
 
 type Crumb = { canvasType: string; label: string };
 
@@ -532,6 +536,37 @@ export default function StoryBoard({ storyId, storyTitle, userId }: { storyId: s
     setLinkOpen(false);
   }
 
+  // Fills an empty main board with the story planner (the same folders a new story can start with). One undo step.
+  function fillWithPlanner() {
+    const planner = storyTemplates.find((t) => t.id === "basic");
+    if (!planner || readOnly || currentCanvasType !== "main") return;
+    store.beginGesture();
+    for (const n of tidyTemplateNodes(planner.nodes)) store.addNode("main", n);
+    for (const [ct, board] of Object.entries(planner.subCanvases ?? {})) {
+      if (store.canvases[ct]?.nodes.length) continue;
+      store.ensureCanvas(ct);
+      for (const n of tidyTemplateNodes(board.nodes)) store.addNode(ct, n);
+    }
+    store.endGesture();
+    broadcastCurrent("main");
+  }
+
+  async function handleExportPicture(): Promise<string | null> {
+    if (!currentCanvas?.nodes.length) return "This board is empty. Add a card first.";
+    // No selection handles or style panel in the picture.
+    setSelectedId(null);
+    setSelectedConnId(null);
+    setInspectorAnchor(null);
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    const label = crumbs[crumbs.length - 1]!.label;
+    const title = crumbs.length > 1 ? `${storyTitle} · ${label}` : storyTitle;
+    const blob = await boardPicture(currentCanvas, title);
+    if (!blob) return "This board is empty. Add a card first.";
+    const name = `${safeFileName(title)}.png`;
+    downloadBlob(name, blob);
+    return `Saved “${name}” to your downloads.`;
+  }
+
   async function handleExport() {
     const text = await exportStoryAsText(storyId, storyTitle);
     downloadText(`${storyTitle.replace(/[^\w\- ]/g, "")}.txt`, text);
@@ -633,6 +668,7 @@ export default function StoryBoard({ storyId, storyTitle, userId }: { storyId: s
           onOpenPalette={() => setPaletteOpen(true)}
           onOpenFeedback={() => setFeedbackOpen(true)}
           onExport={handleExport}
+          onExportPicture={handleExportPicture}
           onOpenSettings={() => setSettingsOpen(true)}
           saveStatus={saveStatus}
           canUndo={store.canUndo}
@@ -673,6 +709,9 @@ export default function StoryBoard({ storyId, storyTitle, userId }: { storyId: s
             onOpenInspector={(nodeId, anchor) => setInspectorAnchor({ nodeId, ...anchor })}
           />
           </div>
+          {!readOnly && !tourOpen && !penMode && !connectMode && currentCanvas.nodes.length === 0 && (
+            <EmptyBoardHint onAdd={addNode} onPlanner={currentCanvasType === "main" ? fillWithPlanner : undefined} />
+          )}
           {dropNotice && (
             <div role="status" className="pop-in absolute bottom-12 left-1/2 z-30 flex -translate-x-1/2 items-center gap-3 rounded-full solid-chip px-4 py-2 text-[12.5px] shadow-card">
               {dropNotice.text}
