@@ -99,6 +99,25 @@ everything else storycanvas has:
   navigation (the live app's own bug history includes a save-vs-navigation
   data-loss bug; this flushes rather than hoping the debounce wins the race).
 
+## Board tools (pen, shapes, charts, snapping, family tree)
+
+- **Pen** (sidebar) — freehand doodles with colour, weight, eraser and undo;
+  Esc or the button finishes. Nearby strokes become one `drawing` node with
+  points relative to its box (`lib/drawing.ts`: simplified, quadratic-smoothed).
+- **Shapes** (sidebar flyout) — rectangle, rounded, ellipse, divider, and a
+  labelled section frame that sits behind cards and carries what's inside it
+  when dragged. A `shape` node; styling in the card's inspector.
+- **Chart** — radar (default), bar or pie; pure SVG in palette colours, stats
+  edited inside the card. A `chart` node (`lib/charts.ts`).
+- **Smart snap** — edges and centres line up with other cards within ~6px,
+  with guide lines; magnet toggle in the bottom bar; hold Alt to skip.
+- **Templates** (sidebar flyout) — a ready-made family tree, inserted into
+  view with an Undo (`lib/family-tree.ts`).
+
+New node types only add optional fields; an older client shows them as plain
+text cards with the node's `text`. Pure logic is covered by
+`node --test tests/board-tools.test.mjs`.
+
 ## The architecture fix
 
 `src/lib/store.ts` is the part of this rebuild that actually mattered most.
