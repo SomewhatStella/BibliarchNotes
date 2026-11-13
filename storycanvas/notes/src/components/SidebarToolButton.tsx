@@ -4,9 +4,11 @@ import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
 /** Immediate, keyboard-accessible label outside the sidebar's clipping scroll rail. */
-export default function SidebarToolButton({ icon, title, onClick, active = false, className = "", compact = false, color = "#356eaa" }: {
+export default function SidebarToolButton({ icon, title, onClick, active = false, className = "", compact = false, color = "#356eaa", tour }: {
   icon: ReactNode; title: string; onClick: () => void; active?: boolean;
   className?: string; compact?: boolean; color?: string;
+  /** data-tour target for the guided tour (TutorialTour). */
+  tour?: string;
 }) {
   const id = useId();
   const button = useRef<HTMLButtonElement>(null);
@@ -33,7 +35,7 @@ export default function SidebarToolButton({ icon, title, onClick, active = false
     };
   }, [open]);
   return <>
-    <button ref={button} type="button" aria-label={title} aria-describedby={open ? id : undefined}
+    <button ref={button} type="button" aria-label={title} aria-describedby={open ? id : undefined} data-tour={tour}
       aria-pressed={active || undefined}
       onMouseEnter={() => { hovered.current = true; show(); }}
       onMouseLeave={() => { hovered.current = false; hideUnlessActive(); }}

@@ -19,11 +19,17 @@ export default function ForgotPassword() {
     e.preventDefault();
     setState("sending");
     setError(null);
-    const { error } = await sendPasswordResetEmail(email.trim());
-    if (error) {
-      setError(authErrorMessage(error));
+    // A thrown error (offline, misconfigured site) used to leave the button on "Sending…" forever.
+    try {
+      const { error } = await sendPasswordResetEmail(email.trim());
+      if (error) {
+        setError(authErrorMessage(error));
+        setState("idle");
+      } else setState("sent");
+    } catch (err) {
+      setError(authErrorMessage(err as Error));
       setState("idle");
-    } else setState("sent");
+    }
   }
 
   if (!open)

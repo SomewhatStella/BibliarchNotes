@@ -9,6 +9,14 @@ import { sendPasswordResetEmail } from "./shared-auth";
  * /reset-password: the same address storycanvas used, so it's already on the
  * project's allowed-redirect list. The main site forwards it to /notes/reset-password.
  */
+function resetErrorMessage(error: { message?: string; status?: number; code?: string }): string {
+  const raw = (error.message ?? "").trim();
+  if (error.status === 429 || /rate limit/i.test(raw) || error.code === "over_email_send_rate_limit") return "Too many reset emails just now. Wait a minute and try again.";
+  if (/email_address_invalid|invalid.*email/i.test(`${error.code} ${raw}`)) return "That email address doesn’t look right. Check it and try again.";
+  if (raw && !raw.startsWith("{") && !raw.startsWith("[") && raw.length <= 160) return raw;
+  return "The reset email couldn’t be sent. Check your connection and try again in a minute.";
+}
+
 export default function ForgotPassword() {
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
@@ -19,11 +27,18 @@ export default function ForgotPassword() {
     e.preventDefault();
     setState("sending");
     setError(null);
-    const { error } = await sendPasswordResetEmail(email.trim());
-    if (error) {
-      setError(error.message || "The reset email couldn’t be sent. Please try again in a minute.");
+    // Same fix as Notes: sendPasswordResetEmail can throw (offline, missing configuration), which
+    // left this stuck on "Sending…"; and Supabase's raw messages (some are JSON) were shown as-is.
+    try {
+      const { error } = await sendPasswordResetEmail(email.trim());
+      if (error) {
+        setError(resetErrorMessage(error));
+        setState("idle");
+      } else setState("sent");
+    } catch (err) {
+      setError(resetErrorMessage(err as Error));
       setState("idle");
-    } else setState("sent");
+    }
   }
 
   if (!open)

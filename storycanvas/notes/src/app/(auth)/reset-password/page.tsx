@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { authErrorMessage } from "@/lib/auth/errors";
@@ -12,18 +12,27 @@ export default function ResetPasswordPage() {
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [state, setState] = useState<"idle" | "saving" | "done">("idle");
+  const [why, setWhy] = useState<string | null>(null);
+  // React runs this effect twice in development. The first run strips the one-time tokens from
+  // the address, so a second run found none and could race the first to "expired".
+  const started = useRef(false);
 
   useEffect(() => {
     document.title = "Choose a new password — Bibliarch Notes";
+    if (started.current) return;
+    started.current = true;
     const supabase = createClient();
     // The link signs you in for this one purpose. Emails sent now carry the session after the #
     // (works on any device); older ones carry a ?code= that only works in the browser that asked.
     const query = new URLSearchParams(window.location.search);
     const hash = new URLSearchParams(window.location.hash.slice(1));
     const code = query.get("code");
+    // Projects whose email template uses the server-side style link send ?token_hash=…&type=recovery.
+    const tokenHash = query.get("token_hash");
     const access_token = hash.get("access_token");
     const refresh_token = hash.get("refresh_token");
     if (query.get("error_code") || hash.get("error_code")) {
+      setWhy(query.get("error_description") || hash.get("error_description"));
       setReady("expired");
       return;
     }
@@ -31,9 +40,11 @@ export default function ResetPasswordPage() {
     // A used or broken link can leave the auth calls waiting, so give up after 8 seconds.
     const signIn: Promise<unknown> = access_token && refresh_token
       ? supabase.auth.setSession({ access_token, refresh_token })
-      : code
-        ? supabase.auth.exchangeCodeForSession(code)
-        : Promise.resolve();
+      : tokenHash
+        ? supabase.auth.verifyOtp({ token_hash: tokenHash, type: "recovery" })
+        : code
+          ? supabase.auth.exchangeCodeForSession(code)
+          : Promise.resolve();
     const check = signIn
       .catch(() => undefined)
       .then(() => supabase.auth.getSession())
@@ -49,9 +60,19 @@ export default function ResetPasswordPage() {
     if (password !== confirm) return setError("The two passwords don’t match.");
     setState("saving");
     setError(null);
-    const { error } = await createClient().auth.updateUser({ password });
-    if (error) {
-      setError(authErrorMessage(error));
+    let failure: string | null = null;
+    try {
+      const { error } = await createClient().auth.updateUser({ password });
+      if (error) {
+        // The link's session can lapse while the page sits open.
+        const lapsed = error.name === "AuthSessionMissingError" || error.code === "session_not_found" || error.code === "session_expired";
+        failure = lapsed ? "This reset link has run out. Ask for a new one from the sign-in page." : authErrorMessage(error);
+      }
+    } catch (e) {
+      failure = authErrorMessage(e as Error);
+    }
+    if (failure) {
+      setError(failure);
       setState("idle");
       return;
     }
@@ -67,6 +88,7 @@ export default function ResetPasswordPage() {
       {ready === "expired" && (
         <>
           <p>This reset link has expired or was already used. Ask for a new one from the sign-in page.</p>
+          {why && <p className="forgot-note">({why.replace(/\+/g, " ")})</p>}
           <Link href="/login" className="switch-mode">Back to sign in</Link>
         </>
       )}

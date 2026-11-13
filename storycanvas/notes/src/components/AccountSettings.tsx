@@ -93,6 +93,9 @@ function PasswordForm({ email }: { email: string }) {
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [again, setAgain] = useState("");
+  // Supabase's "Secure password change" can ask for a 6-digit code from email first.
+  const [code, setCode] = useState("");
+  const [needsCode, setNeedsCode] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
@@ -100,11 +103,22 @@ function PasswordForm({ email }: { email: string }) {
     setLinkState("sending");
     setOk(null);
     setError(null);
-    const { error } = await sendPasswordResetEmail(email);
-    if (error) {
-      setError(authErrorMessage(error));
+    try {
+      const { error } = await sendPasswordResetEmail(email);
+      if (error) {
+        setError(authErrorMessage(error));
+        setLinkState("idle");
+      } else setLinkState("sent");
+    } catch (e) {
+      setError(authErrorMessage(e as Error));
       setLinkState("idle");
-    } else setLinkState("sent");
+    }
+  }
+  async function sendCode(supabase: ReturnType<typeof createClient>) {
+    const { error } = await supabase.auth.reauthenticate();
+    if (error) return setError(authErrorMessage(error));
+    setNeedsCode(true);
+    setOk(`We emailed a 6-digit code to ${email}. Enter it below and press Change password again.`);
   }
   async function save(e: React.FormEvent) {
     e.preventDefault();
@@ -112,21 +126,36 @@ function PasswordForm({ email }: { email: string }) {
     if (next.length < 6) return setError("Use at least 6 characters for the new password.");
     if (next !== again) return setError("The two new passwords don’t match.");
     if (next === current) return setError("Pick a password that’s different from your current one.");
+    if (needsCode && !/^\d{6}$/.test(code.trim())) return setError("Enter the 6-digit code from the email.");
     setBusy(true);
     setError(null);
     const supabase = createClient();
-    // Check the current password first, so someone at an unlocked computer can't change it.
-    const check = await supabase.auth.signInWithPassword({ email, password: current });
-    if (check.error) {
+    try {
+      // Check the current password first, so someone at an unlocked computer can't change it.
+      // A fresh sign-in also counts as "signed in recently" for Supabase's secure password change.
+      const check = await supabase.auth.signInWithPassword({ email, password: current });
+      if (check.error) {
+        const wrong = check.error.code === "invalid_credentials" || check.error.message.toLowerCase().includes("invalid login");
+        return setError(
+          wrong
+            ? "Your current password isn’t right. If you never set one (for example you signed up another way), use “Email me a reset link” below."
+            : authErrorMessage(check.error)
+        );
+      }
+      // current_password: needed when the project turns on "require current password"; ignored otherwise.
+      const { error } = await supabase.auth.updateUser({ password: next, current_password: current, ...(needsCode ? { nonce: code.trim() } : {}) });
+      if (error) {
+        const reauth = error.code === "reauthentication_needed" || error.code === "reauth_nonce_missing" || /reauthentication/i.test(error.message);
+        if (reauth && !needsCode) return await sendCode(supabase);
+        return setError(authErrorMessage(error));
+      }
+      setCurrent(""); setNext(""); setAgain(""); setCode(""); setNeedsCode(false);
+      setOk("Password changed. Use the new one next time you sign in.");
+    } catch (e) {
+      setError(authErrorMessage(e as Error));
+    } finally {
       setBusy(false);
-      const wrong = check.error.code === "invalid_credentials" || check.error.message.toLowerCase().includes("invalid login");
-      return setError(wrong ? "Your current password isn’t right." : authErrorMessage(check.error));
     }
-    const { error } = await supabase.auth.updateUser({ password: next });
-    setBusy(false);
-    if (error) return setError(authErrorMessage(error));
-    setCurrent(""); setNext(""); setAgain("");
-    setOk("Password changed.");
   }
   return (
     <section className="account-card">
@@ -135,6 +164,12 @@ function PasswordForm({ email }: { email: string }) {
         <label>Current password<input type="password" required autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)} /></label>
         <label>New password<input type="password" required minLength={6} autoComplete="new-password" value={next} onChange={(e) => setNext(e.target.value)} /></label>
         <label>New password again<input type="password" required minLength={6} autoComplete="new-password" value={again} onChange={(e) => setAgain(e.target.value)} /></label>
+        {needsCode && (
+          <label>
+            Code from the email
+            <input inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))} />
+          </label>
+        )}
         <Status error={error} ok={ok} />
         <button className="account-primary" disabled={busy}>{busy ? "Saving…" : "Change password"}</button>
       </form>

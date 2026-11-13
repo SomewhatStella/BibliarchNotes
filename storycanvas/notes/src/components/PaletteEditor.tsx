@@ -1,8 +1,18 @@
 "use client";
 
-import { useState } from "react";
-import { X, Sun, Sliders } from "lucide-react";
-import { DEFAULT_PALETTE, PaletteGenerator, ColorUtils, generateFromCustomColors, type ColorPalette, type ColorTemplate } from "@/lib/color-palette";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { X, Sun, Sliders, SwatchBook, Check } from "lucide-react";
+import {
+  DEFAULT_PALETTE,
+  PALETTE_PRESETS,
+  PaletteGenerator,
+  ColorUtils,
+  applyPaletteToDOM,
+  generateFromCustomColors,
+  isHexColor,
+  type ColorPalette,
+  type ColorTemplate,
+} from "@/lib/color-palette";
 
 // Ported from storycanvas's real PaletteSelector (components/ui/palette-selector.tsx)
 // — the same two modes (hue-slider "Complementary Palette" vs 3-input
@@ -38,12 +48,17 @@ export default function PaletteEditor({
   onChange: (p: ColorPalette) => void;
   onClose: () => void;
 }) {
-  const [mode, setMode] = useState<"hue" | "custom">(palette.id.startsWith("custom-") ? "custom" : "hue");
+  const [mode, setMode] = useState<"presets" | "hue" | "custom">(palette.id.startsWith("custom-") ? "custom" : palette.id.startsWith("project-") ? "hue" : "presets");
+  const [presetId, setPresetId] = useState(PALETTE_PRESETS.some((p) => p.id === palette.id) ? palette.id : "");
   const [hueAdjustment, setHueAdjustment] = useState(0);
+  // Opening the editor must not recolour the board until the slider is actually moved.
+  const [hueTouched, setHueTouched] = useState(false);
+  // Only a full #rgb/#rrggbb ever reaches the preview; half-typed text stays in the box.
+  const startHex = (c: string, fallback: string) => (isHexColor(c) ? c : fallback);
   const [customColors, setCustomColors] = useState({
-    main: palette.colors.nodeDefault || "#2E5AAC",
-    complementary: palette.colors.nodeText || "#2B2416",
-    accent: palette.colors.canvasBackground || "#F5F6F9",
+    main: startHex(palette.colors.nodeDefault, "#2E5AAC"),
+    complementary: startHex(palette.colors.nodeText, "#2B2416"),
+    accent: startHex(palette.colors.canvasBackground, "#F5F6F9"),
   });
 
   // The slider names and shows "the main color" — so Main needs to actually
@@ -59,14 +74,38 @@ export default function PaletteEditor({
     "light",
     "project"
   );
-  const customGenerated = generateFromCustomColors(customColors.main, customColors.complementary, customColors.accent);
-  const preview = mode === "hue" ? hueGenerated : customGenerated;
+  const customGenerated = useMemo(
+    () => generateFromCustomColors(customColors.main, customColors.complementary, customColors.accent),
+    [customColors.main, customColors.complementary, customColors.accent]
+  );
+  const presetChosen = PALETTE_PRESETS.find((p) => p.id === presetId);
+  const preview = mode === "hue" ? (hueTouched ? hueGenerated : palette) : mode === "custom" ? customGenerated : presetChosen ?? palette;
+
+  // The board itself is the preview: every choice recolours it at once. Closing without
+  // applying puts the saved palette back.
+  const applied = useRef(false);
+  const previewKey = JSON.stringify(preview.colors);
+  useEffect(() => {
+    applyPaletteToDOM(preview);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [previewKey]);
+  const saved = useRef(palette);
+  useEffect(() => () => {
+    if (!applied.current) applyPaletteToDOM(saved.current);
+  }, []);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
 
   function applyPreview() {
-    onChange(mode === "hue" ? hueGenerated : customGenerated);
+    applied.current = true;
+    onChange(preview);
     onClose();
   }
   function resetToDefault() {
+    applied.current = true;
     onChange(DEFAULT_PALETTE);
     onClose();
   }
@@ -84,7 +123,13 @@ export default function PaletteEditor({
           </button>
         </div>
 
-        <div className="flex items-center justify-center gap-2 border-b border-ink-900/8 p-3">
+        <div className="flex flex-wrap items-center justify-center gap-2 border-b border-ink-900/8 p-3">
+          <button
+            onClick={() => setMode("presets")}
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12.5px] font-semibold ${mode === "presets" ? "bg-bibliarch-blue text-white" : "bg-ink-900/5 text-ink-700"}`}
+          >
+            <SwatchBook size={14} /> Presets
+          </button>
           <button
             onClick={() => setMode("hue")}
             className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12.5px] font-semibold ${mode === "hue" ? "bg-bibliarch-blue text-white" : "bg-ink-900/5 text-ink-700"}`}
@@ -103,7 +148,26 @@ export default function PaletteEditor({
             to shrink-wrap; forcing it to grow left a hollow gap before the
             footer. overflow-auto stays as a safety net for a short window. */}
         <div className="scrollbar-thin grid grid-cols-1 gap-5 overflow-auto p-5 sm:grid-cols-2">
-          {mode === "hue" ? (
+          {mode === "presets" ? (
+            <div className="grid grid-cols-2 gap-2">
+              {PALETTE_PRESETS.map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => setPresetId(p.id)}
+                  aria-pressed={presetId === p.id}
+                  className={`flex items-center gap-2 rounded-xl border p-2 text-left ${presetId === p.id ? "border-bibliarch-blue ring-2 ring-bibliarch-blue/40" : "border-ink-900/10 hover:bg-ink-900/5"}`}
+                >
+                  <span className="flex flex-none overflow-hidden rounded-md border border-ink-900/10">
+                    <span className="h-7 w-4" style={{ background: p.colors.nodeDefault }} />
+                    <span className="h-7 w-4" style={{ background: p.colors.nodeText }} />
+                    <span className="h-7 w-4" style={{ background: p.colors.canvasBackground }} />
+                  </span>
+                  <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold text-ink-900">{p.name}</span>
+                  {presetId === p.id && <Check size={14} className="flex-none text-bibliarch-blue" />}
+                </button>
+              ))}
+            </div>
+          ) : mode === "hue" ? (
             <div>
               <p className="mb-1 text-[13px] font-semibold text-ink-900">Main Color Slider</p>
               <p className="mb-3 text-[11.5px] text-ink-500">Slide to change the overall color theme while keeping perfect harmony.</p>
@@ -119,7 +183,10 @@ export default function PaletteEditor({
                 max={180}
                 step={5}
                 value={hueAdjustment}
-                onChange={(e) => setHueAdjustment(Number(e.target.value))}
+                onChange={(e) => {
+                  setHueTouched(true);
+                  setHueAdjustment(Number(e.target.value));
+                }}
                 className="w-full accent-bibliarch-blue"
                 style={{ marginTop: "-20px" }}
               />
@@ -144,6 +211,7 @@ export default function PaletteEditor({
           <div>
             <p className="mb-1.5 font-mono text-[10.5px] uppercase tracking-wide text-ink-500">Live preview</p>
             <ColorPreview colors={preview.colors} />
+            <p className="mt-2 text-[11.5px] text-ink-500">The board behind this window shows it too. Close without applying to go back.</p>
           </div>
         </div>
 
@@ -176,19 +244,31 @@ function ColorPreview({ colors }: { colors: ColorPalette["colors"] }) {
 }
 
 function ColorRow({ label, hint, value, onChange }: { label: string; hint: string; value: string; onChange: (v: string) => void }) {
+  // The text box keeps whatever is typed; only a complete colour is passed on.
+  const [text, setText] = useState(value);
+  useEffect(() => setText(value), [value]);
+  const bad = !isHexColor(text);
+  const full = value.length === 4 ? `#${value.slice(1).split("").map((c) => c + c).join("")}` : value;
   return (
     <div className="flex items-center gap-3">
-      <input type="color" value={value} onChange={(e) => onChange(e.target.value)} className="h-11 w-14 flex-none cursor-pointer rounded-lg border-2 border-ink-900/10 bg-transparent" />
+      <input type="color" aria-label={label} value={full} onChange={(e) => onChange(e.target.value)} className="h-11 w-14 flex-none cursor-pointer rounded-lg border-2 border-ink-900/10 bg-transparent" />
       <div className="min-w-0 flex-1">
         <p className="text-[13px] font-semibold text-ink-900">{label}</p>
         <p className="mb-1 text-[11px] text-ink-500">{hint}</p>
         <input
           type="text"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
+          value={text}
+          aria-label={`${label} (hex)`}
+          aria-invalid={bad}
+          onChange={(e) => {
+            const v = e.target.value.trim();
+            setText(v);
+            if (isHexColor(v)) onChange(v);
+          }}
           placeholder="#ffffff"
-          className="w-full rounded-md border border-ink-900/12 bg-editor-raised px-2 py-1 font-mono text-[11.5px] outline-none focus:border-bibliarch-blue"
+          className={`w-full rounded-md border bg-editor-raised px-2 py-1 font-mono text-[11.5px] outline-none focus:border-bibliarch-blue ${bad ? "border-bibliarch-rose" : "border-ink-900/12"}`}
         />
+        {bad && <p className="mt-0.5 text-[10.5px] text-bibliarch-rose">Use a colour like #2E5AAC</p>}
       </div>
     </div>
   );

@@ -3,7 +3,8 @@
 // readable plain-text document. Good enough to read a whole story outside
 // the app; a .docx export is a reasonable fast-follow if asked for.
 import { createClient } from "@/lib/supabase/client";
-import type { CanvasRow, StoryNode } from "@/lib/types";
+import type { CanvasRow, RelationshipRegistry, StoryNode } from "@/lib/types";
+import { findMaps, memberIdsOf, migrateLegacy, readRegistry, tiesAmong } from "@/lib/relationship-registry";
 import { chartSummary } from "@/lib/charts";
 
 async function loadAllCanvases(storyId: string): Promise<Map<string, CanvasRow>> {
@@ -32,7 +33,7 @@ function nodeText(n: StoryNode): string {
   return parts.filter(Boolean).join(": ");
 }
 
-function walk(canvasType: string, canvases: Map<string, CanvasRow>, depth: number, out: string[], seen: Set<string>) {
+function walk(canvasType: string, canvases: Map<string, CanvasRow>, depth: number, out: string[], seen: Set<string>, registry?: RelationshipRegistry) {
   if (seen.has(canvasType)) return; // guards a pathological cycle, not expected in practice
   seen.add(canvasType);
   const canvas = canvases.get(canvasType);
@@ -48,11 +49,18 @@ function walk(canvasType: string, canvases: Map<string, CanvasRow>, depth: numbe
       for (const child of children) out.push(`${indent}  - ${nodeText(child)}`);
       continue;
     }
+    if (n.refNodeId) {
+      // A linked card: the original (and its board) is written out where it lives.
+      out.push(`${indent}${n.text} (linked)`);
+      continue;
+    }
     if (n.type === "relationship-canvas") {
       const rel = n.relationshipData;
-      if (rel && rel.relationships.length > 0) {
+      // Ties are shared story-wide now (lib/relationship-registry.ts); the map's own list is a mirror.
+      const ties = rel ? (registry ? tiesAmong(registry, memberIdsOf(n)) : rel.relationships) : [];
+      if (rel && ties.length > 0) {
         out.push(`${indent}${n.text || "Relationships"}:`);
-        for (const r of rel.relationships) {
+        for (const r of ties) {
           const a = rel.selectedCharacters.find((c) => c.id === r.fromCharacterId)?.name ?? "?";
           const b = rel.selectedCharacters.find((c) => c.id === r.toCharacterId)?.name ?? "?";
           out.push(`${indent}  - ${a} & ${b}: ${r.relationshipType}${r.label ? ` (${r.label})` : ""}`);
@@ -78,7 +86,7 @@ function walk(canvasType: string, canvases: Map<string, CanvasRow>, depth: numbe
 
     out.push(`${indent}${nodeText(n)}`);
     if (n.linkedCanvasId && canvases.has(n.linkedCanvasId)) {
-      walk(n.linkedCanvasId, canvases, depth + 1, out, seen);
+      walk(n.linkedCanvasId, canvases, depth + 1, out, seen, registry);
     }
   }
 }
@@ -86,7 +94,9 @@ function walk(canvasType: string, canvases: Map<string, CanvasRow>, depth: numbe
 export async function exportStoryAsText(storyId: string, storyTitle: string): Promise<string> {
   const canvases = await loadAllCanvases(storyId);
   const out: string[] = [storyTitle, "=".repeat(storyTitle.length), ""];
-  walk("main", canvases, 0, out, new Set());
+  const all = Object.fromEntries(canvases);
+  const { registry } = migrateLegacy(readRegistry(all), findMaps(all).map((m) => m.node));
+  walk("main", canvases, 0, out, new Set(), registry);
   return out.join("\n");
 }
 

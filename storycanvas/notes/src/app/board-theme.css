@@ -55,3 +55,22 @@ html[data-ui-theme='dark']:has(.notes-board-shell) .bg-ink-900\/30 { background-
 @media (max-width:700px){
   .notes-board-shell .canvas-ground+div button{min-width:36px;min-height:32px}
 }
+
+/* Story palettes (derivePaletteVars in lib/color-palette.ts). The built-in default keeps the
+   original look; any other palette tints the cards, their colour strip and avatars, in light
+   and dark mode. The board's own background is the palette's, set in globals.css. */
+.notes-board-shell[data-default-palette='false'] { --color-node-default: var(--pal-accent-light); }
+.notes-board-shell[data-default-palette='false'] [data-node-id].emboss {
+  background: var(--pal-fill-light);
+  border-color: color-mix(in oklab, var(--pal-accent-light) 25%, transparent);
+}
+.notes-board-shell[data-default-palette='false'] [data-node-id] .font-display.text-ink-900 { color: var(--pal-text-light); }
+html[data-ui-theme='dark'] .notes-board-shell[data-default-palette='false'] { --color-node-default: var(--pal-accent-dark); }
+html[data-ui-theme='dark'] .notes-board-shell[data-default-palette='false'] [data-node-id].emboss {
+  background: var(--pal-fill-dark);
+  border-color: color-mix(in oklab, var(--pal-accent-dark) 30%, transparent);
+}
+html[data-ui-theme='dark'] .notes-board-shell[data-default-palette='false'] [data-node-id] .font-display.text-ink-900 { color: rgb(var(--editor-ink-900)); }
+
+/* The Open button on folder/character/place cards: a comfortable finger target on phones. */
+@media (pointer:coarse){ [data-open-card]{min-height:36px;min-width:68px} }

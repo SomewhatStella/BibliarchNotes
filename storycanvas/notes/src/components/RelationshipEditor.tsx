@@ -2,10 +2,11 @@
 
 import { useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { createPortal } from "react-dom";
-import { Plus, X, UserPlus, Users } from "lucide-react";
+import { Plus, X, UserPlus, Users, Link2 } from "lucide-react";
 import type { RelationshipConnection, StoryNode } from "@/lib/types";
 import { RELATIONSHIP_COLORS, RELATIONSHIP_TYPES } from "@/lib/types";
 import { getImageUrl } from "@/lib/storage";
+import { mapLabel, useSharedRelationships } from "@/lib/use-shared-relationships";
 
 const STRENGTH_WIDTH = { 1: 1, 2: 2, 3: 3.5 } as const;
 const STRENGTH_LABEL = { 1: "weak", 2: "medium", 3: "strong" } as const;
@@ -27,10 +28,12 @@ export default function RelationshipEditor({
   node,
   allCharacters,
   onChange,
+  readOnly = false,
 }: {
   node: StoryNode;
   allCharacters: { id: string; name: string; profileImageUrl?: string }[];
   onChange: (patch: Partial<StoryNode>) => void;
+  readOnly?: boolean;
 }) {
   const [adding, setAdding] = useState<RelationshipConnection | null | undefined>(undefined);
   const [formA, setFormA] = useState("");
@@ -70,6 +73,12 @@ export default function RelationshipEditor({
       position: randomPosition(w, h),
     })),
   ];
+  // Ties come from the story-wide registry, not this map: any two people on this map show
+  // the tie they have anywhere in the story, and an edit here shows in every other map.
+  const shared = useSharedRelationships(node, readOnly);
+  const memberIds = new Set(members.map((m) => m.id));
+  const ties = shared.tiesAmong(memberIds);
+  const otherMaps = shared.otherMaps(ties);
   const nameOf = (id: string) => allCharacters.find((c) => c.id === id)?.name ?? members.find((c) => c.id === id)?.name ?? "?";
   const portraitOf = (id: string) => allCharacters.find((c) => c.id === id)?.profileImageUrl ?? members.find((c) => c.id === id)?.profileImageUrl;
 
@@ -78,10 +87,12 @@ export default function RelationshipEditor({
   const dragRef = useRef<{ id: string; dx: number; dy: number } | null>(null);
   const [livePos, setLivePos] = useState<{ id: string; x: number; y: number } | null>(null);
 
+  // The map's own `relationships` is kept as a mirror of what it shows, for the old live app.
   function commitMembers(nextMembers: typeof members) {
-    onChange({ relationshipData: { selectedCharacters: nextMembers, relationships: data.relationships } });
+    onChange({ relationshipData: { selectedCharacters: nextMembers, relationships: shared.tiesAmong(new Set(nextMembers.map((m) => m.id))) } });
   }
   function commitRelationships(next: RelationshipConnection[]) {
+    if (!shared.commit(ties, next)) return;
     onChange({ relationshipData: { selectedCharacters: members, relationships: next } });
   }
 
@@ -124,10 +135,11 @@ export default function RelationshipEditor({
     // calls each close over the same stale `node.relationshipData` prop
     // (it hasn't re-rendered between them), so the second call clobbered the
     // first and silently undid the removal. Found by actually removing one.
+    // Taking someone off this map only hides their ties here; the ties stay in the story.
     onChange({
       relationshipData: {
         selectedCharacters: members.filter((m) => m.id !== id),
-        relationships: data.relationships.filter((r) => r.fromCharacterId !== id && r.toCharacterId !== id),
+        relationships: ties.filter((r) => r.fromCharacterId !== id && r.toCharacterId !== id),
       },
     });
   }
@@ -162,7 +174,7 @@ export default function RelationshipEditor({
   function saveTie() {
     if (!formA || !formB || formA === formB) return;
     const editingId = adding?.id;
-    const next = data.relationships.filter((r) => r.id !== editingId && !samePair(r, formA, formB));
+    const next = ties.filter((r) => r.id !== editingId && !samePair(r, formA, formB));
     next.push({
       id: editingId ?? `rel-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       fromCharacterId: formA,
@@ -181,7 +193,7 @@ export default function RelationshipEditor({
   }
 
   function removeTie(id: string) {
-    commitRelationships(data.relationships.filter((r) => r.id !== id));
+    commitRelationships(ties.filter((r) => r.id !== id));
   }
 
   const rootRef = useRef<HTMLDivElement>(null);
@@ -216,7 +228,7 @@ export default function RelationshipEditor({
       onMouseDown={(e) => e.stopPropagation()}
     >
       <svg data-testid="rel-lines-svg" width={w} height={h} className="pointer-events-none absolute left-3 top-3">
-        {data.relationships.map((r) => {
+        {ties.map((r) => {
           const a = posOf(r.fromCharacterId, members, livePos);
           const b = posOf(r.toCharacterId, members, livePos);
           if (!a || !b) return null;
@@ -314,6 +326,16 @@ export default function RelationshipEditor({
         })}
       </div>
 
+      {otherMaps.length > 0 && (
+        <span
+          className="absolute left-2 top-2 flex max-w-[60%] items-center gap-1 truncate rounded-full bg-editor-raised/90 px-2 py-0.5 text-[10.5px] text-ink-500 shadow-card"
+          title={`Ties here also show in: ${otherMaps.map(mapLabel).join(", ")}. Editing a tie updates it everywhere.`}
+        >
+          <Link2 size={11} className="flex-none" />
+          Also appears in {otherMaps.length} other {otherMaps.length === 1 ? "map" : "maps"}
+        </span>
+      )}
+
       <div className="absolute right-2 top-2 flex items-center gap-1.5">
         <button
           onClick={(e) => {
@@ -400,6 +422,12 @@ export default function RelationshipEditor({
             </div>
 
             <div className="scrollbar-thin flex-1 overflow-auto px-5 py-4">
+              {adding && shared.otherMapsForTie(adding).length > 0 && (
+                <p className="mb-3 flex items-center gap-1.5 rounded-lg bg-bibliarch-blue/10 px-3 py-2 text-[12px] text-ink-700">
+                  <Link2 size={13} className="flex-none text-bibliarch-blue" />
+                  Also shown in {shared.otherMapsForTie(adding).map(mapLabel).join(", ")}. Changes here update it there too.
+                </p>
+              )}
               <p className="mb-1.5 font-mono text-[10.5px] uppercase tracking-wide text-ink-500">Who</p>
               <div className="mb-4 grid grid-cols-2 gap-3">
                 <PersonPicker label="Person A" characters={allCharacters} value={formA} exclude={formB} onPick={setFormA} />
