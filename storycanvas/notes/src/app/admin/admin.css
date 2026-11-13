@@ -133,3 +133,47 @@ html[data-ui-theme='dark'] .admin-shell { --a-good: #7fd3a0; --a-bad: #f19aa6; -
   .admin-item-actions { flex-direction: row; flex-wrap: wrap; width: 100%; padding-left: 28px; }
   .admin-details { padding-left: 16px; }
 }
+
+/* Daily active people (admin home) */
+.admin-activity { margin-bottom: 28px; padding: 20px; border: 1px solid var(--ui-line); border-radius: 12px; background: var(--ui-raised); }
+.admin-activity .admin-stat { background: var(--ui-bg, transparent); }
+.admin-activity-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin-bottom: 8px; }
+.admin-section-title { margin: 0; font: 500 20px/1.2 var(--ui-serif, Georgia, serif); color: var(--ui-ink); }
+.admin-activity-head .admin-segment { margin: 0; }
+.admin-activity-head .admin-segment button { padding: 0 12px; }
+.admin-activity-loading { display: flex; align-items: center; gap: 8px; padding: 32px 0; color: var(--ui-muted); font-size: 13px; }
+.admin-chart { position: relative; margin: 4px 0 6px; }
+.admin-chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.admin-chart-grid { stroke: var(--ui-line); stroke-width: 1; opacity: .6; }
+.admin-chart-base { stroke: var(--ui-line); stroke-width: 1; }
+.admin-chart-axis { fill: var(--ui-muted); font: 11px var(--ui-font); font-variant-numeric: tabular-nums; }
+.admin-chart-bar { fill: var(--ui-accent); transition: opacity .12s; }
+.admin-chart-bar.is-dim { opacity: .45; }
+.admin-chart-bar.is-today { fill: url(#today-hatch); stroke: var(--ui-accent); stroke-width: 1; }
+.admin-chart-today-bg { fill: color-mix(in srgb, var(--ui-accent) 25%, transparent); }
+.admin-chart-today-line { stroke: var(--ui-accent); stroke-width: 2; }
+.admin-chart-pick { fill: var(--ui-ink); }
+.admin-chart-hit { fill: transparent; cursor: pointer; outline: none; }
+.admin-chart-avg line { stroke: var(--ui-ink); stroke-width: 1; stroke-dasharray: 4 4; opacity: .55; }
+.admin-chart-avg text { fill: var(--ui-ink); font: 600 11px var(--ui-font); paint-order: stroke; stroke: var(--ui-raised); stroke-width: 4px; }
+.admin-chart-tip { position: absolute; z-index: 2; display: flex; flex-direction: column; gap: 1px; padding: 6px 10px; border: 1px solid var(--ui-line); border-radius: 8px; background: var(--ui-raised); box-shadow: 0 6px 18px -8px #0005; color: var(--ui-muted); font-size: 12px; white-space: nowrap; pointer-events: none; transform: translate(-50%, calc(-100% - 8px)); }
+.admin-chart-tip strong { color: var(--ui-ink); font-size: 13px; }
+.admin-activity-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+.admin-link-button { padding: 0; border: 0; background: none; color: var(--ui-accent); font: 600 12px var(--ui-font); cursor: pointer; }
+.admin-link-button:hover { text-decoration: underline; }
+.admin-activity-table { max-height: 320px; overflow-y: auto; margin-bottom: 12px; }
+.admin-activity-table tbody tr { cursor: pointer; }
+.admin-activity-table tr.is-picked td { background: color-mix(in srgb, var(--ui-accent) 12%, transparent); }
+.admin-day-detail { padding: 12px 14px; border-radius: 10px; background: var(--ui-tint, var(--ui-hover)); }
+.admin-day-detail .admin-h2 { margin: 0 0 8px; }
+.admin-day-detail p.admin-muted { margin: 0; }
+.admin-day-people { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.admin-day-people li { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border: 1px solid var(--ui-line); border-radius: 999px; background: var(--ui-raised); font-size: 13px; }
+.admin-day-name { font-weight: 600; color: var(--ui-ink); }
+.admin-activity-fine { margin: 12px 0 0; line-height: 1.45; }
+@media (max-width: 560px) {
+  .admin-activity { padding: 14px; }
+  .admin-activity-head .admin-segment button { padding: 0 8px; font-size: 12px; }
+}
+.admin-activity-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 560px) { .admin-activity-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

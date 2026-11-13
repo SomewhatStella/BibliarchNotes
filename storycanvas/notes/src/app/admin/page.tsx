@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowLeft, Users, MessageSquare, Loader2, ShieldAlert } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useAdminGate } from "@/lib/use-admin-gate";
+import { ActivityPanel } from "@/components/ActivityPanel";
 
 export default function AdminPage() {
   const gate = useAdminGate();
@@ -47,6 +48,7 @@ export default function AdminPage() {
         <ArrowLeft size={14} /> Your stories
       </Link>
       <h1 className="admin-title">Admin</h1>
+      <ActivityPanel />
       <div className="admin-home-grid">
         <Link href="/admin/users" className="admin-home-card">
           <Users size={22} />

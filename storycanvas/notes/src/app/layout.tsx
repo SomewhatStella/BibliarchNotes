@@ -4,6 +4,7 @@ import "./site-theme.css";
 import "./board-theme.css";
 import "./feedback.css";
 import { ThemeBootstrap } from "../components/ThemeToggle";
+import { ActivityPing } from "../components/ActivityPing";
 
 
 export const metadata: Metadata = {
@@ -22,6 +23,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           mismatch with no fix on our end, not a real SSR bug. */}
       <body className="font-body antialiased" suppressHydrationWarning>
         {children}
+        <ActivityPing />
       </body>
     </html>
   );

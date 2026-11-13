@@ -8,6 +8,7 @@ import LoadingScreen from './LoadingScreen';
 import BugReport from './BugReport';
 import ForgotPassword from './ForgotPassword';
 import {createPortal} from 'react-dom';
+import {recordActivity} from './activity';
 export default function SharedAccount(){
  const [session,setSession]=useState<CloudSession|null>(null),[ready,setReady]=useState(false),[error,setError]=useState('');
  const [mode,setMode]=useState<'login'|'signup'>('login'),[pending,setPending]=useState(false);
@@ -23,6 +24,8 @@ export default function SharedAccount(){
   const timer=setInterval(focus,5000);
   return()=>{live=false;serial++;unsubscribe();clearInterval(timer);window.removeEventListener('focus',focus);document.removeEventListener('visibilitychange',focus);};
  },[]);
+ // Count today's visit (the 5-second session check above re-runs this past midnight).
+ useEffect(()=>{if(session)void recordActivity(session.user.id);},[session]);
  async function submit(form:FormData){
   setPending(true);setError('');
   try{
