@@ -84,11 +84,23 @@ export function tidyTemplateNodes(input: StoryNode[]): StoryNode[] {
   return nodes;
 }
 
-/** The template's cards with fresh ids (list membership remapped), tidied, and without linking arrows. */
-export function instantiateBoardTemplate(key: string): { nodes: StoryNode[]; connections: StoryConnection[] } | null {
+/** Short stable hash (FNV-1a) — the same board always gets the same template ids. */
+export function boardStamp(seed: string): string {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < seed.length; i++) h = Math.imul(h ^ seed.charCodeAt(i), 0x01000193) >>> 0;
+  return h.toString(36);
+}
+
+/**
+ * The template's cards with fresh ids (list membership remapped), tidied, and without linking arrows.
+ * Pass the board key as `seed`: ids then depend only on the board, so two collaborators opening the
+ * same new profile at once produce the SAME cards and node-by-node saving merges them into one set,
+ * instead of stacking a second template chart on top of the first.
+ */
+export function instantiateBoardTemplate(key: string, seed?: string): { nodes: StoryNode[]; connections: StoryConnection[] } | null {
   const t = subCanvasTemplates[key];
   if (!t || !t.nodes.length) return null;
-  const stamp = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+  const stamp = seed ? boardStamp(seed) : `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
   const ids: Record<string, string> = {};
   for (const n of t.nodes) ids[n.id] = `${n.id}-${stamp}`;
   const nodes = t.nodes.map((n: StoryNode) => ({
