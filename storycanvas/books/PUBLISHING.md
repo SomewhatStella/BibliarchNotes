@@ -34,6 +34,16 @@ local fonts fall back to system fonts. Arbitrary decoration strings are ignored.
 Preview HTML is safe/self-contained; ordinary screen view is not a paginated
 page-count preview. Chromium print/PDF is the authoritative pagination.
 
+Comic pages
+-----------
+Comic sections print on a named zero-margin page (no running head or folio) at
+the full trim size; the comic's own margin, gutters and panel shapes come from
+src/comic.ts (panelBoxes), so print matches the editor. Panels are clip-path
+polygons, borders an SVG overlay, bubbles positioned HTML text. Panel art is the
+book's library picture, validated like any other raster. Edge-to-edge comic
+pages need a print proof: bleed is still advisory. In EPUB each panel becomes a
+picture in reading order with its bubble/caption words underneath.
+
 EPUB
 ----
 EPUB3 ZIP starts with the uncompressed mimetype entry, then container.xml,

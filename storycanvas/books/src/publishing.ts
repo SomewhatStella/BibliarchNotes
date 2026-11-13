@@ -3,6 +3,7 @@ import {paragraphStyleCss} from './paragraph-styles';
 import {assertImagePlacement, type ImagePlacement} from './image-placement';
 import {overlayTextHtml} from './overlay-runs';
 import {assertOverlay, overlayStyle, overlayBackgroundStyle, isIllustration, type ArtworkOverlay} from './artwork';
+import {assertComic, comicPrintHtml, comicEpubHtml, comicCss, panelBoxes, artBox, visiblePanels, MAX_PANELS, type ComicPage, type ComicArt} from './comic';
 import {assertDesign, fontCss, fontBytes, decalSource, normalizeLayout, ORNAMENTS, designCss, type CustomFont, type Decal, type PageLayout, type ImageMode} from './design';
 
 export type PublishSection = {
@@ -33,6 +34,8 @@ export type PublishSection = {
   decoration?: string;
   decals?: Decal[];
   layout?: Partial<PageLayout>;
+  /** Comic / manga page. `art[i]` is panel i's picture (from the book's picture library). */
+  comic?: ComicPage & {art?: ({src: string; width: number; height: number} | null)[]};
 };
 export type PublishBook = {
   title: string;
@@ -199,6 +202,20 @@ export function assertPublishBook(
     if (s.label !== undefined) text(s.label, "chapter label", 60);
     if (s.chapter !== undefined) text(s.chapter, "chapter title", 300);
     text(s.kind, "section kind", 100);
+    if (s.comic !== undefined) {
+      assertComic(s.comic);
+      const art = s.comic.art;
+      if (art !== undefined) {
+        if (!Array.isArray(art) || art.length > MAX_PANELS) throw new Error("Invalid comic art");
+        for (const a of art) if (a !== null) {
+          if (!a || typeof a !== "object") throw new Error("Invalid comic art");
+          text(a.src, "comic art", MAX_PUBLISH_BYTES);
+          imageData(a.src);
+          range(a.width, 1, 100000, "comic art width");
+          range(a.height, 1, 100000, "comic art height");
+        }
+      }
+    }
     if (s.content?.root) walk(s.content.root, 0);
     else if (s.content != null)
       throw new Error("Expected serialized Lexical editor state");
@@ -274,7 +291,16 @@ function section(
   epub = false,
   imageSrc?: string,
   all:PublishSection[]=[],
+  page?:{widthMm:number;heightMm:number},
+  comicSrc?:(panel:number)=>string|undefined,
 ) {
+  if (s.kind === 'comic' && s.comic) {
+    const art = s.comic.art || [];
+    const body = epub
+      ? `<h1 class="comic-epub-title">${esc(s.title)}</h1>${comicEpubHtml(s.comic, k => comicSrc?.(k))}`
+      : comicPrintHtml(s.comic, page?.widthMm ?? 148, page?.heightMm ?? 210, (k): ComicArt => art[k] ?? undefined);
+    return `<section data-kind="comic" id="section-${i + 1}" class="page-design comic-section">${body}</section>`;
+  }
   const toc=s.kind==='toc'?`<ol class="toc-list">${all.map((x,j)=>x.kind==='toc'||(x.inlineTitle&&!x.tocTitle)?'':`<li><a href="${epub?'':'#'}section-${j+1}${epub?'.xhtml':''}">${esc(x.tocTitle??x.title)}</a></li>`).join('')}</ol>`:'';
   const art = ["color-art", "bnw-art", "back-cover"].includes(s.kind);
   const image = s.image;
@@ -316,6 +342,16 @@ export function validatePrint(book: PublishBook): string[] {
         );
     }
   for (const s of book.sections) {
+    if (s.comic) {
+      const boxes = panelBoxes(s.comic, book.format.widthMm, book.format.heightMm), panels = visiblePanels(s.comic);
+      boxes.forEach(b => {
+        const a = s.comic!.art?.[b.index];
+        if (!a) return;
+        const pa = (b.width * book.format.widthMm) / (b.height * book.format.heightMm || 1);
+        const mm = book.format.widthMm * b.width / 100 * artBox(pa, a.width / a.height, panels[b.index]).width / 100;
+        if (a.width / (mm / 25.4) < 150) warnings.push(`${s.title}: panel ${b.index + 1} art is low resolution (below 150 DPI at print size).`);
+      });
+    }
     if(s.image?.mode==='spread') warnings.push(`${s.title}: spread artwork prints as two consecutive cropped halves; verify facing-page alignment and source aspect ratio.`);
     for(const d of s.decals||[]) if(!d.src.startsWith('builtin:')) {const info=imageData(d.src);const mm=(book.format.widthMm-2*book.format.marginMm)*d.width/100;if(!info.width||info.width/(mm/25.4)<150)warnings.push(`${s.title}: ornament resolution is low or unknown; verify 300 DPI artwork.`);}
   }
@@ -339,10 +375,13 @@ export function buildPrintHtml(book: PublishBook): string {
  *{box-sizing:border-box}.page-design-content :is(p,h1,h2,h3,h4,h5,h6){white-space:pre-wrap;tab-size:var(--indent-step,12.7mm)}.page-design-content p{hyphens:auto;-webkit-hyphens:auto;hyphenate-limit-chars:5 2 2;text-wrap:pretty}:root{--indent-step:${f.indentStepMm??12.7}mm;--decal-page-h:${f.heightMm}mm;--decal-content-h:${f.heightMm-2*m}mm;--decal-margin:${m}mm;--page-content-h:${Math.max(20,f.heightMm-2*m-12)}mm;--heading-font:${f.headingFont ?? "Georgia, serif"};--heading-size:${f.headingSizePt??26}pt}${paragraphStyleCss('.page-design-content')}.toc-list{list-style:none;padding:0;margin:1em 0 0}.toc-list li{margin:0 0 .6em}.toc-list a{color:inherit;text-decoration:none}html{print-color-adjust:exact;-webkit-print-color-adjust:exact}body{margin:0;color:#171717;background:white;font-family:${f.bodyFont ?? "Georgia, serif"};font-size:${f.bodySizePt ?? 11}pt;line-height:${f.lineHeight??1.55};letter-spacing:${f.tracking??0}px;overflow-wrap:anywhere}h1,h2,h3{font-family:${f.headingFont ?? "Georgia, serif"};break-after:avoid}h1{font-size:${f.headingSizePt??26}pt}section{break-before:page}section:first-child{break-before:auto}p{orphans:3;widows:3;margin:0 0 ${f.paragraphSpacing??16}px;${f.paragraphIndent!==undefined?`text-indent:${f.paragraphIndent}em;`:''}${f.paragraphAlign?`text-align:${f.paragraphAlign};`:''}}figure{margin:0;break-inside:avoid}img{display:block;max-width:100%;max-height:${f.heightMm - 2 * m - 25}mm;margin:auto}figcaption{text-align:center;font-size:9pt}.title-page{padding-top:20mm}.title-page[data-kind=book-front] .page-design-content{text-align:center}.chapter-label{margin:0 0 4mm;text-align:center;font-size:.75em;letter-spacing:.3em;text-transform:uppercase}.art{page:artwork;text-align:center}.art h1{display:none}.art figure{width:100%}.art img{width:100%;height:${f.heightMm}mm;max-height:${f.heightMm}mm}.art figure:has(figcaption) img{height:${f.heightMm - 15}mm}.art figcaption{padding:2mm}@page artwork{margin:0;@top-center{content:none}@bottom-center{content:none}}blockquote{border-left:2px solid #aaa;padding-left:1em}a{color:inherit}
  ${fontCss(book.customFonts||[])}${designCss}
  .art .design-image{margin:0}.art .design-image img{height:${f.heightMm}mm}.art .design-image:has(figcaption) img{height:${f.heightMm-15}mm}
+ @page comic{margin:0;@top-center{content:none}@bottom-center{content:none}}@page comic:left{margin:0}@page comic:right{margin:0}
+ section[data-kind="comic"]{page:comic;break-before:page;break-after:page;width:${f.widthMm}mm;height:${f.heightMm}mm;position:relative;overflow:clip;padding:0;border:0}
+ ${comicCss}
  .page-design{overflow:clip}.art[data-kind="color-art"],.art[data-kind="bnw-art"],.art:has(figure img[style*="position:absolute"]){height:${f.heightMm}mm;overflow:clip}.art:has(figure img[style*="position:absolute"]) figure{position:static;margin:0}.art .decal{z-index:2}.art .artwork-overlay{z-index:3}
  ${f.recto?'section[data-kind="chapter-title"]{break-before:right}':''}
  .image-spread{display:block;break-before:page;break-inside:auto}.image-spread .spread-panel{width:100%;height:${f.heightMm-2*m}mm;aspect-ratio:auto;break-after:page}.image-spread .spread-panel img{width:200%!important;max-width:none!important;max-height:none!important;height:100%!important}.image-spread .spread-panel:last-child img{left:-100%}.image-full img{height:${f.heightMm-2*m-15}mm;max-height:none}.decal{max-height:none;margin:0}.page-design{display:block}.image-half{width:50%}.image-float-left,.image-float-right{width:42%}
- </style></head><body>${book.sections.map((s, i) => section(s, i, false, undefined,book.sections)).join("")}</body></html>`;
+ </style></head><body>${book.sections.map((s, i) => section(s, i, false, undefined,book.sections,f)).join("")}</body></html>`;
 }
 export async function buildEpub(book: PublishBook): Promise<Uint8Array> {
   assertPublishBook(book);
@@ -367,8 +406,17 @@ export async function buildEpub(book: PublishBook): Promise<Uint8Array> {
       zip.file("OEBPS/" + src, d.bytes);
       manifest += `<item id="img-${id}" href="${src}" media-type="image/${d.kind}" />`;
     }
+    const comicFiles: (string | undefined)[] = [];
+    if (s.comic) visiblePanels(s.comic).forEach((_, k) => {
+      const a = s.comic!.art?.[k];
+      if (!a) return;
+      const d = imageData(a.src), path = `images/comic-${id}-${k + 1}.${d.kind}`;
+      zip.file("OEBPS/" + path, d.bytes);
+      manifest += `<item id="comic-${id}-${k + 1}" href="${path}" media-type="image/${d.kind}" />`;
+      comicFiles[k] = path;
+    });
     const file = `section-${id}.xhtml`;
-    zip.file("OEBPS/" + file, xhtml(s.title, section(s, i, true, src,book.sections)));
+    zip.file("OEBPS/" + file, xhtml(s.title, section(s, i, true, src,book.sections,undefined,k=>comicFiles[k])));
     manifest += `<item id="s-${id}" href="${file}" media-type="application/xhtml+xml" />`;
     spine += `<itemref idref="s-${id}" />`;
     nav += `<li><a href="${file}">${esc(s.title || "Untitled section")}</a></li>`;
@@ -387,7 +435,7 @@ export async function buildEpub(book: PublishBook): Promise<Uint8Array> {
   );
   zip.file(
     "OEBPS/style.css",
-    fontCss(fonts,fontPath)+`body{line-height:${book.format.lineHeight??1.5};letter-spacing:${book.format.tracking??0}px;font-family:${book.format.bodyFont||'serif'};${book.format.bodySizePt!==undefined?`font-size:${book.format.bodySizePt}pt;`:''}}:root{--indent-step:${book.format.indentStepMm??12.7}mm}p,h1,h2,h3,h4,h5,h6{white-space:pre-wrap;tab-size:var(--indent-step)}p{hyphens:auto;-webkit-hyphens:auto;${book.format.paragraphIndent!==undefined?`text-indent:${book.format.paragraphIndent}em;`:''}margin:0 0 ${book.format.paragraphSpacing??16}px;${book.format.paragraphAlign?`text-align:${book.format.paragraphAlign};`:''}}h1,h2,h3{font-family:${book.format.headingFont||'serif'}}:root{--heading-font:${book.format.headingFont||'serif'};--heading-size:${book.format.headingSizePt??22}pt}${paragraphStyleCss('.page-design-content')}img{max-width:100%;height:auto}figure{margin:1em 0}figcaption{font-size:0.9em}h1{break-after:avoid}${designCss}.image-spread{display:block}.image-spread img{width:100%}.image-full img{max-height:none}`,
+    fontCss(fonts,fontPath)+'.comic-epub-panel{margin:0 0 1.5em;text-align:center}.comic-epub-panel img{max-width:100%;height:auto}.comic-epub-panel figcaption p{margin:.4em 0;text-indent:0;text-align:center}.comic-epub-panel .comic-caption{font-style:italic}'+`body{line-height:${book.format.lineHeight??1.5};letter-spacing:${book.format.tracking??0}px;font-family:${book.format.bodyFont||'serif'};${book.format.bodySizePt!==undefined?`font-size:${book.format.bodySizePt}pt;`:''}}:root{--indent-step:${book.format.indentStepMm??12.7}mm}p,h1,h2,h3,h4,h5,h6{white-space:pre-wrap;tab-size:var(--indent-step)}p{hyphens:auto;-webkit-hyphens:auto;${book.format.paragraphIndent!==undefined?`text-indent:${book.format.paragraphIndent}em;`:''}margin:0 0 ${book.format.paragraphSpacing??16}px;${book.format.paragraphAlign?`text-align:${book.format.paragraphAlign};`:''}}h1,h2,h3{font-family:${book.format.headingFont||'serif'}}:root{--heading-font:${book.format.headingFont||'serif'};--heading-size:${book.format.headingSizePt??22}pt}${paragraphStyleCss('.page-design-content')}img{max-width:100%;height:auto}figure{margin:1em 0}figcaption{font-size:0.9em}h1{break-after:avoid}${designCss}.image-spread{display:block}.image-spread img{width:100%}.image-full img{max-height:none}`,
   );
   zip.file(
     "OEBPS/package.opf",

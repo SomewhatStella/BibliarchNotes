@@ -3,6 +3,7 @@ import {assertImagePlacement} from './image-placement';
 import {assertOverlay, type ArtworkOverlay} from './artwork';
 import { assertDesign, fontCss } from './design';
 import { assertCover } from './cover';
+import { assertComic } from './comic';
 export const KEY = "bibliarch-books-v1";
 export const MAX_BYTES = 4_000_000;
 export const fonts = [
@@ -48,6 +49,7 @@ export const pageTemplates = [
   "back-cover",
   "copyright",
   "toc",
+  "comic",
 ] as const;
 export type PageTemplate = (typeof pageTemplates)[number];
 export type PageImage = {
@@ -71,6 +73,8 @@ export type PageImage = {
 export type ImageAsset = {id:string;src:string;name:string;naturalWidth:number;naturalHeight:number};
 export type PlacedImage = {id:string;assetId:string;page:number;x:number;y:number;width:number;mode:'wrap'|'overlay';contour?:import('./contour').Contour;wrapGap?:number;contourMode?:'alpha'|'background'|'rectangle'};
 export type Scene = {
+  /** Comic / manga page: panel layout, the writer's own art per panel, and speech bubbles. */
+  comic?: import('./comic').ComicPage;
   images?: PlacedImage[];
   overlay?: ArtworkOverlay;
   bookmark?: boolean;
@@ -337,6 +341,7 @@ function chapters(cs: any, ids: Set<string>) {
       doc(s.content);
       assertDesign(s);
       assertOverlay(s.overlay);
+      if (s.comic !== undefined) assertComic(s.comic);
       if(s.images!==undefined){assert(Array.isArray(s.images)&&s.images.length<=24);const seen=new Set();for(const p of s.images){text(p.id);text(p.assetId);assert(!seen.has(p.id));seen.add(p.id);assert(Number.isInteger(p.page)&&p.page>=0&&p.page<500);assert(['wrap','overlay'].includes(p.mode));for(const k of ['x','y','width'])assert(Number.isFinite(p[k])&&p[k]>=0&&p[k]<=100);assert(p.width>=5);if(p.wrapGap!==undefined)assert(Number.isFinite(p.wrapGap)&&p.wrapGap>=0&&p.wrapGap<=48);if(p.contourMode!==undefined)assert(['alpha','background','rectangle'].includes(p.contourMode));if(p.contour!==undefined){assert(Array.isArray(p.contour)&&p.contour.length>=3&&p.contour.length<=256);for(const point of p.contour)assert(Array.isArray(point)&&point.length===2&&point.every((v:unknown)=>typeof v==='number'&&Number.isFinite(v)&&v>=0&&v<=100));}}}
       if (s.bookmark !== undefined) assert(typeof s.bookmark === 'boolean');
       if (s.inlineTitle !== undefined) assert(typeof s.inlineTitle === 'boolean');
