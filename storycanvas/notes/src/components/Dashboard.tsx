@@ -4,12 +4,12 @@ import OverviewNavigation from "./OverviewNavigation";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { BookOpen, Plus, LogOut, Shield, Mail, Check, X, Settings } from "lucide-react";
+import { BookOpen, Plus, LogOut, Shield, Mail, Check, X, Settings, Trash2, LogOut as LeaveIcon } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { storyTemplates } from "@/lib/story-templates";
 import { tidyTemplateNodes } from "@/lib/board-templates";
 import { signOut } from "@/lib/auth/actions";
-import { getMyInvitations, acceptInvitation, declineInvitation, type MyInvitation } from "@/lib/collaboration";
+import { getMyInvitations, acceptInvitation, declineInvitation, leaveCollaboration, type MyInvitation } from "@/lib/collaboration";
 import type { Story } from "@/lib/types";
 
 export default function Dashboard({ userId, username }: { userId: string; username: string }) {
@@ -21,6 +21,9 @@ export default function Dashboard({ userId, username }: { userId: string; userna
   const [error, setError] = useState<string | null>(null);
   const [invitations, setInvitations] = useState<MyInvitation[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
+  // The story waiting on "are you sure?" — a real dialog, not a hover-only link nobody found.
+  const [confirmDelete, setConfirmDelete] = useState<Story | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   async function refresh() {
     const supabase = createClient();
@@ -99,11 +102,26 @@ export default function Dashboard({ userId, username }: { userId: string; userna
     router.push(`/story/${data.id}`);
   }
 
-  async function deleteStory(id: string) {
-    if (!confirm("Delete this story? This can't be undone.")) return;
-    const supabase = createClient();
-    await supabase.from("stories").delete().eq("id", id);
-    setStories((prev) => prev?.filter((s) => s.id !== id) ?? null);
+  async function deleteStory(story: Story) {
+    setDeleting(true);
+    try {
+      if (story.user_id === userId) {
+        // .select() so a delete RLS quietly refused shows as an error instead of a story that comes back on refresh.
+        const { data, error } = await createClient().from("stories").delete().eq("id", story.id).select("id");
+        if (error) throw error;
+        if (!data?.length) throw new Error("The database refused to delete this story.");
+      } else {
+        // Only the owner can delete a shared story; for everyone else this removes it from their list.
+        await leaveCollaboration(story.id);
+      }
+      setStories((prev) => prev?.filter((s) => s.id !== story.id) ?? null);
+      setConfirmDelete(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't delete that story");
+      setConfirmDelete(null);
+    } finally {
+      setDeleting(false);
+    }
   }
 
   return (
@@ -171,11 +189,15 @@ export default function Dashboard({ userId, username }: { userId: string; userna
                   </p>
                 </div>
               </button>
+              {/* Always visible (the old hover-only link didn't exist on phones and was easy to miss on desktop). */}
               <button
-                onClick={() => deleteStory(s.id)}
-                className="absolute right-3 top-3 rounded-full bg-white/80 px-2 py-1 text-[11px] text-ink-500 opacity-0 hover:bg-bibliarch-rose/15 hover:text-bibliarch-rose group-hover:opacity-100"
+                onClick={() => setConfirmDelete(s)}
+                title={s.user_id === userId ? "Delete story" : "Leave this shared story"}
+                aria-label={s.user_id === userId ? `Delete ${s.title}` : `Leave ${s.title}`}
+                className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-white/85 px-2 py-1 text-[11px] text-ink-500 shadow-card hover:bg-bibliarch-rose/15 hover:text-bibliarch-rose"
               >
-                Delete
+                {s.user_id === userId ? <Trash2 size={12} /> : <LeaveIcon size={12} />}
+                {s.user_id === userId ? "Delete" : "Leave"}
               </button>
             </div>
           ))}
@@ -227,6 +249,38 @@ export default function Dashboard({ userId, username }: { userId: string; userna
 
         {stories?.length === 0 && !creating && (
           <p className="mt-6 text-[14px] text-ink-500">No stories yet — create your first one.</p>
+        )}
+
+        {confirmDelete && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center bg-ink-900/15" onClick={() => !deleting && setConfirmDelete(null)}>
+            <div role="alertdialog" aria-label="Confirm delete" onClick={(e) => e.stopPropagation()} className="pop-in emboss w-80 rounded-2xl p-5">
+              {confirmDelete.user_id === userId ? (
+                <>
+                  <p className="font-display text-[16px] font-semibold text-ink-900">Delete &ldquo;{confirmDelete.title}&rdquo;?</p>
+                  <p className="mt-1.5 text-[12.5px] text-ink-500">
+                    Every board in it is deleted, for you and for anyone you shared it with. This can&rsquo;t be undone.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="font-display text-[16px] font-semibold text-ink-900">Leave &ldquo;{confirmDelete.title}&rdquo;?</p>
+                  <p className="mt-1.5 text-[12.5px] text-ink-500">It&rsquo;s shared with you, so only its owner can delete it. Leaving removes it from your stories.</p>
+                </>
+              )}
+              <div className="mt-4 flex gap-2">
+                <button
+                  disabled={deleting}
+                  onClick={() => deleteStory(confirmDelete)}
+                  className="flex-1 rounded-lg bg-bibliarch-rose px-3 py-2 text-[13px] font-semibold text-white disabled:opacity-50"
+                >
+                  {deleting ? "Working…" : confirmDelete.user_id === userId ? "Delete story" : "Leave story"}
+                </button>
+                <button disabled={deleting} onClick={() => setConfirmDelete(null)} className="rounded-lg px-3 py-2 text-[13px] text-ink-500">
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </main>
